@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window theme before Compose draws: Fernplay's dark frame, no action bar. -->
+    <style name="Theme.Fernplay" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/fernplay_frame</item>
+        <item name="android:statusBarColor">@color/fernplay_frame</item>
+        <item name="android:navigationBarColor">@color/fernplay_frame</item>
+    </style>
+    <color name="fernplay_frame">#FF1A1C23</color>
+</resources>
