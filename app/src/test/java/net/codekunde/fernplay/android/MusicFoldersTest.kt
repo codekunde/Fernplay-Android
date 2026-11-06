@@ -35,6 +35,23 @@ class MusicFoldersTest {
     }
 
     @Test
+    fun `folder picker ids become folder names`() {
+        assertEquals("Music/Live", MusicFolders.fromTreeDocumentId("primary:Music/Live"))
+        assertEquals("Music", MusicFolders.fromTreeDocumentId("1A2B-3C4D:Music/"))
+        assertEquals("", MusicFolders.fromTreeDocumentId("primary:"))
+        assertEquals(null, MusicFolders.fromTreeDocumentId("raw-id"))
+    }
+
+    @Test
+    fun `a chosen folder includes its subfolders but not look-alikes`() {
+        assertEquals(true, MusicFolders.includes("Music", "Music"))
+        assertEquals(true, MusicFolders.includes("Music", "Music/Live"))
+        assertEquals(false, MusicFolders.includes("Music", "Musical"))
+        assertEquals(false, MusicFolders.includes("Music/Live", "Music"))
+        assertEquals(true, MusicFolders.includedByAny(listOf("Podcasts", "Download"), "Download/Albums"))
+    }
+
+    @Test
     fun `a root that is only a name prefix does not match`() {
         assertEquals(
             "storage/emulated/01/Music",

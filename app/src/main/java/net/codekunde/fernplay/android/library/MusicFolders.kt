@@ -29,4 +29,21 @@ object MusicFolders {
             ?: return folder.trim('/')
         return folder.removePrefix(root).trim('/')
     }
+
+    /**
+     * A folder picked with Android's folder picker, from its tree document id
+     * ("primary:Music/Live" -> "Music/Live"). Null when the id has no volume part.
+     */
+    fun fromTreeDocumentId(documentId: String?): String? {
+        val id = documentId ?: return null
+        if (':' !in id) return null
+        return id.substringAfter(':').trim('/')
+    }
+
+    /** A chosen folder includes its subfolders. An empty choice ("") is the whole storage. */
+    fun includes(chosen: String, folder: String): Boolean =
+        chosen.isEmpty() || folder == chosen || folder.startsWith("$chosen/")
+
+    fun includedByAny(chosen: Collection<String>, folder: String): Boolean =
+        chosen.any { includes(it, folder) }
 }

@@ -1,0 +1,193 @@
+package net.codekunde.fernplay.android.ui.components
+
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import net.codekunde.fernplay.android.R
+import net.codekunde.fernplay.android.library.Song
+import net.codekunde.fernplay.android.library.SongList
+import net.codekunde.fernplay.android.ui.theme.Fernplay
+
+/** 48 dp icon button, as in the design. */
+@Composable
+fun FernIconButton(@DrawableRes icon: Int, label: String, onClick: () -> Unit, tint: Color = Fernplay.colors.text) {
+    IconButton(onClick = onClick, modifier = Modifier.size(48.dp)) {
+        Icon(painterResource(icon), contentDescription = label, tint = tint)
+    }
+}
+
+/** 64 dp top bar: optional Back, a title in the title colour, then [trailing]. */
+@Composable
+fun FernTopBar(
+    title: String,
+    onBack: (() -> Unit)? = null,
+    showFern: Boolean = false,
+    trailing: @Composable RowScope.() -> Unit = {},
+) {
+    val c = Fernplay.colors
+    Row(
+        Modifier.fillMaxWidth().height(64.dp).padding(start = if (onBack != null) 4.dp else 16.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(if (showFern) 10.dp else 4.dp),
+    ) {
+        if (onBack != null) FernIconButton(R.drawable.ic_back, "Back", onBack)
+        if (showFern) Icon(painterResource(R.drawable.ic_fern_line), contentDescription = null, tint = c.accentLight, modifier = Modifier.size(32.dp))
+        Text(
+            title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = c.title,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f).semantics { heading() },
+        )
+        trailing()
+    }
+}
+
+@Composable
+fun SectionLabel(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        color = Fernplay.colors.textDim,
+        modifier = modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp).semantics { heading() },
+    )
+}
+
+private val tileGradients = listOf(
+    Color(0xFF2A4E27) to Color(0xFF0D1A10),
+    Color(0xFF4A4F62) to Color(0xFF1A1C23),
+    Color(0xFF3E6B35) to Color(0xFF12251A),
+    Color(0xFF6A5B1F) to Color(0xFF241F0B),
+    Color(0xFF2D4B5A) to Color(0xFF0F1A20),
+)
+
+/** Stand-in for album art: one of the design's five gradients, picked by [seed], with a fern. */
+@Composable
+fun ArtTile(seed: Long, size: Dp = 48.dp, @DrawableRes icon: Int = R.drawable.ic_fern_line) {
+    val (from, to) = tileGradients[Math.floorMod(seed, tileGradients.size.toLong()).toInt()]
+    Box(
+        Modifier.size(size).clip(RoundedCornerShape(size * 0.21f)).background(Brush.linearGradient(listOf(from, to))),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(painterResource(icon), contentDescription = null, tint = Color(0x8CDFF0DA), modifier = Modifier.size(size / 2))
+    }
+}
+
+/** A song: art, title, "artist · length". The playing song's title is in the title colour. */
+@Composable
+fun SongRow(song: Song, playing: Boolean, onClick: () -> Unit, endPadding: Dp = 16.dp) {
+    val c = Fernplay.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .clickable(onClickLabel = "Play", onClick = onClick)
+            .padding(start = 16.dp, end = endPadding, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        ArtTile(song.id)
+        Column(Modifier.weight(1f)) {
+            Text(
+                song.title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (playing) c.title else c.text,
+                fontWeight = if (playing) FontWeight.Medium else null,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                "${song.artist} · ${SongList.duration(song.durationMs)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = c.textDim,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** Centred message for empty and error states, with an optional action below. */
+@Composable
+fun EmptyState(
+    @DrawableRes icon: Int,
+    title: String,
+    text: String,
+    modifier: Modifier = Modifier,
+    action: @Composable () -> Unit = {},
+) {
+    val c = Fernplay.colors
+    Column(
+        modifier.padding(horizontal = 36.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+    ) {
+        Box(
+            Modifier.size(112.dp).clip(RoundedCornerShape(56.dp)).background(c.accentContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(painterResource(icon), contentDescription = null, tint = c.onAccentContainer, modifier = Modifier.size(56.dp))
+        }
+        Text(title, style = MaterialTheme.typography.headlineSmall, color = c.title, modifier = Modifier.semantics { heading() })
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyLarge,
+            color = c.textDim,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        action()
+    }
+}
+
+/** A tappable list row with a leading icon, used for "All songs" and "Choose another folder". */
+@Composable
+fun NavRow(
+    title: String,
+    subtitle: String?,
+    onClick: () -> Unit,
+    leading: @Composable () -> Unit,
+    trailingIcon: Int? = R.drawable.ic_chevron,
+) {
+    val c = Fernplay.colors
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        leading()
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = c.text)
+            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = c.textDim)
+        }
+        if (trailingIcon != null) Icon(painterResource(trailingIcon), contentDescription = null, tint = c.textDim)
+    }
+}
