@@ -8,9 +8,11 @@ import androidx.compose.runtime.LongState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.annotation.OptIn
 import androidx.core.content.ContextCompat
 import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
@@ -67,6 +69,7 @@ class PlayerConnection(private val context: Context) {
         }
     }
 
+    @OptIn(UnstableApi::class) // MediaMetadata.durationMs
     private fun refreshQueue() {
         val c = controller ?: return
         _queue.value = (0 until c.mediaItemCount).map { i ->
@@ -108,6 +111,7 @@ class PlayerConnection(private val context: Context) {
         controller = null
     }
 
+    @OptIn(UnstableApi::class) // MediaMetadata.durationMs
     private fun refresh() {
         val c = controller ?: return
         val item = c.currentMediaItem

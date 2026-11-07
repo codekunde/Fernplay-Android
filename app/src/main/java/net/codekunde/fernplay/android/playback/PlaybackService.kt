@@ -161,6 +161,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     private inner class Callback : MediaSession.Callback {
+        @OptIn(UnstableApi::class) // DEFAULT_SESSION_COMMANDS, AcceptedResultBuilder
         override fun onConnect(
             session: MediaSession,
             controller: MediaSession.ControllerInfo,

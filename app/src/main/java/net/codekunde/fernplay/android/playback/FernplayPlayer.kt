@@ -1,6 +1,8 @@
 package net.codekunde.fernplay.android.playback
 
+import androidx.annotation.OptIn
 import androidx.media3.common.ForwardingPlayer
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 
 /**
@@ -12,4 +14,5 @@ import androidx.media3.exoplayer.ExoPlayer
  * focus; with crossfade this class will request focus itself and the players
  * will not.
  */
+@OptIn(UnstableApi::class) // ForwardingPlayer's constructor is marked unstable
 class FernplayPlayer(val engine: ExoPlayer) : ForwardingPlayer(engine)

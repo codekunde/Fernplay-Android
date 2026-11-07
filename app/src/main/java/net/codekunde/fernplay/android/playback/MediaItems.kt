@@ -1,11 +1,17 @@
 package net.codekunde.fernplay.android.playback
 
 import android.net.Uri
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.util.UnstableApi
 import net.codekunde.fernplay.android.library.Song
 
-/** Songs and saved queue entries as player items, and back. */
+/**
+ * Songs and saved queue entries as player items, and back. The song length
+ * rides in [MediaMetadata.durationMs], which Media3 marks unstable.
+ */
+@OptIn(UnstableApi::class)
 object MediaItems {
 
     fun of(song: Song): MediaItem =
