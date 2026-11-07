@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.codekunde.fernplay.android.R
 import net.codekunde.fernplay.android.library.SongList
+import net.codekunde.fernplay.android.playback.PlayerConnection
+import net.codekunde.fernplay.android.ui.player.ContinueCard
 import net.codekunde.fernplay.android.ui.LibraryViewModel
 import net.codekunde.fernplay.android.ui.components.EmptyState
 import net.codekunde.fernplay.android.ui.components.FernIconButton
@@ -35,6 +37,7 @@ import java.text.NumberFormat
 @Composable
 fun HomeScreen(
     vm: LibraryViewModel,
+    player: PlayerConnection,
     onAllSongs: () -> Unit,
     onSettings: () -> Unit,
     onChooseFolders: () -> Unit,
@@ -70,6 +73,7 @@ fun HomeScreen(
                 }
             }
             else -> Column(Modifier.weight(1f)) {
+                ContinueCard(player)
                 val list = songs
                 NavRow(
                     title = "All songs",

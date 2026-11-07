@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -38,9 +39,15 @@ import net.codekunde.fernplay.android.ui.theme.Fernplay
 
 /** 48 dp icon button, as in the design. */
 @Composable
-fun FernIconButton(@DrawableRes icon: Int, label: String, onClick: () -> Unit, tint: Color = Fernplay.colors.text) {
+fun FernIconButton(
+    @DrawableRes icon: Int,
+    label: String,
+    onClick: () -> Unit,
+    tint: Color = Fernplay.colors.text,
+    iconSize: Dp = 24.dp,
+) {
     IconButton(onClick = onClick, modifier = Modifier.size(48.dp)) {
-        Icon(painterResource(icon), contentDescription = label, tint = tint)
+        Icon(painterResource(icon), contentDescription = label, tint = tint, modifier = Modifier.size(iconSize))
     }
 }
 
@@ -102,7 +109,10 @@ fun ArtTile(seed: Long, size: Dp = 48.dp, @DrawableRes icon: Int = R.drawable.ic
     }
 }
 
-/** A song: art, title, "artist · length". The playing song's title is in the title colour. */
+/**
+ * A song: art, title, "artist · length". The loaded song shows level bars on its
+ * tile and a coloured, heavier title (the bars carry it without colour).
+ */
 @Composable
 fun SongRow(song: Song, playing: Boolean, onClick: () -> Unit, endPadding: Dp = 16.dp) {
     val c = Fernplay.colors
@@ -111,16 +121,18 @@ fun SongRow(song: Song, playing: Boolean, onClick: () -> Unit, endPadding: Dp = 
             .fillMaxWidth()
             .heightIn(min = 64.dp)
             .clickable(onClickLabel = "Play", onClick = onClick)
+            .then(if (playing) Modifier.semantics { stateDescription = "Now playing" } else Modifier)
             .padding(start = 16.dp, end = endPadding, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        ArtTile(song.id)
+        ArtTile(song.id, icon = if (playing) R.drawable.ic_now_playing else R.drawable.ic_fern_line)
         Column(Modifier.weight(1f)) {
             Text(
                 song.title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (playing) c.title else c.text,
+                // Light theme's title colour equals the text colour, so the mark uses the accent there.
+                color = if (!playing) c.text else if (c.isDark) c.title else c.accent,
                 fontWeight = if (playing) FontWeight.Medium else null,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

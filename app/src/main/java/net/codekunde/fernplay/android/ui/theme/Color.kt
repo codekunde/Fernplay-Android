@@ -24,6 +24,10 @@ data class FernplayColors(
     val lcd: Color,
     val lcdBackground: Color,
     val lcdDim: Color,
+    /** Second line on the LCD (artist, time left). */
+    val lcdSoft: Color,
+    /** Rim around the LCD and the mini player. */
+    val lcdFrame: Color,
     val isDark: Boolean,
 )
 
@@ -46,6 +50,8 @@ val DarkFernplayColors = FernplayColors(
     lcd = Color(0xFF4BE868),
     lcdBackground = Color(0xFF030604),
     lcdDim = Color(0xFF123A1C),
+    lcdSoft = Color(0xFF7FD78F),
+    lcdFrame = Color(0xFF2A2D38),
     isDark = true,
 )
 
@@ -69,5 +75,7 @@ val LightFernplayColors = FernplayColors(
     lcd = Color(0xFF4BE868),
     lcdBackground = Color(0xFF030604),
     lcdDim = Color(0xFF123A1C),
+    lcdSoft = Color(0xFF7FD78F),
+    lcdFrame = Color(0xFF2A2D38),
     isDark = false,
 )

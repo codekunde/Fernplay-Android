@@ -122,7 +122,7 @@ fun AllSongsScreen(vm: LibraryViewModel, player: PlayerConnection, onBack: () ->
                 ) {
                     OutlinedButton(onClick = { vm.query.value = "" }) { Text("Clear search") }
                 }
-                else -> SongListWithStrip(listState, v.songs, v.letters, sort, playingId) { index -> player.play(v.songs, index) }
+                else -> SongListWithStrip(listState, v.songs, v.letters, sort, playingId) { index -> player.play(v.songs, index, queueName = "All songs") }
             }
         }
     }
