@@ -68,6 +68,7 @@ class PlaybackService : MediaSessionService() {
             .build()
         val player = FernplayPlayer(engine)
         restore(player)
+        SleepTimer.shared.attach(engine)
 
         val s = MediaSession.Builder(this, player)
             .setCallback(Callback())
@@ -112,6 +113,7 @@ class PlaybackService : MediaSessionService() {
         main.removeCallbacks(saveTick)
         session?.run {
             savePosition()
+            (player as? FernplayPlayer)?.engine?.let(SleepTimer.shared::detach)
             player.release()
             release()
         }

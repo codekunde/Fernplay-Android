@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A dumbbell: the gym view. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF" android:pathData="M1.5,10h2v4h-2zM4.5,6.5h3v11h-3zM7.5,11h9v2h-9zM16.5,6.5h3v11h-3zM20.5,10h2v4h-2z" />
+</vector>

@@ -38,6 +38,16 @@ import net.codekunde.fernplay.android.playback.PlayerConnection
 import net.codekunde.fernplay.android.ui.components.ArtTile
 import net.codekunde.fernplay.android.ui.components.EmptyState
 import net.codekunde.fernplay.android.ui.components.FernIconButton
+import net.codekunde.fernplay.android.ui.components.FernMenu
+import net.codekunde.fernplay.android.ui.components.FernMenuItem
+import net.codekunde.fernplay.android.playback.SleepRules
+import net.codekunde.fernplay.android.playback.SleepState
+import net.codekunde.fernplay.android.playback.SleepTimer
+import androidx.compose.material3.Icon
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.codekunde.fernplay.android.ui.components.FernTopBar
 import net.codekunde.fernplay.android.ui.theme.Fernplay
 import net.codekunde.fernplay.android.ui.theme.LcdText
@@ -49,7 +59,11 @@ fun NowPlayingScreen(player: PlayerConnection, onClose: () -> Unit, onGym: () ->
     val now by player.now
     val position by player.position
     var scrub by remember { mutableStateOf<Long?>(null) }
+    var menuOpen by remember { mutableStateOf(false) }
+    var sleepSheet by remember { mutableStateOf(false) }
     val n = now ?: return NothingPlaying(onClose)
+
+    if (sleepSheet) SleepTimerSheet(SleepTimer.shared, onDismiss = { sleepSheet = false })
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // The art gives way on short screens; everything below it keeps its size.
@@ -69,7 +83,13 @@ fun NowPlayingScreen(player: PlayerConnection, onClose: () -> Unit, onGym: () ->
                         modifier = Modifier.semantics { heading() },
                     )
                 }
-                FernIconButton(R.drawable.ic_more, "Gym view", onGym)
+                Box {
+                    FernIconButton(R.drawable.ic_more, "More", { menuOpen = true })
+                    FernMenu(expanded = menuOpen, onDismiss = { menuOpen = false }) {
+                        FernMenuItem("Gym view", R.drawable.ic_gym) { menuOpen = false; onGym() }
+                        FernMenuItem("Sleep timer", R.drawable.ic_moon) { menuOpen = false; sleepSheet = true }
+                    }
+                }
             }
 
             Box(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), contentAlignment = Alignment.Center) {
@@ -119,14 +139,39 @@ private fun NowPlayingLcd(n: NowPlaying, positionMs: Long, modifier: Modifier) {
     val c = Fernplay.colors
     LcdPanel(modifier) {
         Text(n.title, style = LcdText.title.copy(shadow = LcdGlow), color = c.lcd, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(
-            "${n.artist.uppercase()} · ${NowPlayingText.trackOf(n.index, n.count)}",
-            style = LcdText.small.copy(fontSize = 15.sp, lineHeight = 20.sp),
-            color = c.lcdSoft,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "${n.artist.uppercase()} · ${NowPlayingText.trackOf(n.index, n.count)}",
+                style = LcdText.small.copy(fontSize = 15.sp, lineHeight = 20.sp),
+                color = c.lcdSoft,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            SleepBadge(SleepTimer.shared)
+        }
         LcdClock(positionMs, n.durationMs, big = false, modifier = Modifier.padding(top = 6.dp))
+    }
+}
+
+/** A moon and the time left (or END) while the sleep timer runs; nothing when it is off. */
+@Composable
+private fun SleepBadge(timer: SleepTimer) {
+    val c = Fernplay.colors
+    val state by timer.state.collectAsStateWithLifecycle()
+    val remaining by timer.remaining.collectAsStateWithLifecycle()
+    val (text, spoken) = when (state) {
+        SleepState.Off -> return
+        SleepState.EndOfSong -> "END" to "Sleep timer: pauses when this song ends"
+        is SleepState.At -> SleepRules.clock(remaining ?: 0) to "Sleep timer: ${SleepRules.spoken(remaining ?: 0)}"
+    }
+    Row(
+        Modifier.padding(start = 10.dp).clearAndSetSemantics { contentDescription = spoken },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(painterResource(R.drawable.ic_moon), contentDescription = null, tint = c.lcdSoft, modifier = Modifier.size(16.dp))
+        Text(text, style = LcdText.small.copy(fontSize = 15.sp, lineHeight = 20.sp), color = c.lcdSoft, maxLines = 1)
     }
 }
 
