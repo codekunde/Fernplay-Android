@@ -82,6 +82,10 @@ interface PlaylistDao {
     @Query("SELECT name FROM playlist")
     suspend fun names(): List<String>
 
+    /** Every other playlist's name, for checking a rename. */
+    @Query("SELECT name FROM playlist WHERE id != :id")
+    suspend fun namesExcept(id: Long): List<String>
+
     @Query("DELETE FROM playlist_entry WHERE playlistId = :playlistId")
     suspend fun clearEntries(playlistId: Long)
 

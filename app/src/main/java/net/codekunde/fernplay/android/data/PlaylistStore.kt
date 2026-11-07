@@ -66,6 +66,19 @@ class PlaylistStore(
         return dao.insertPlaylist(PlaylistEntity(name = name.trim(), createdAt = now))
     }
 
+    /** Why playlist [id] cannot be renamed to [name], or null when it can (its own name, recased, is fine). */
+    suspend fun renameProblem(id: Long, name: String): String? = PlaylistRules.nameProblem(name, dao.namesExcept(id))
+
+    /** Renames; returns false when [renameProblem] objects. */
+    suspend fun rename(id: Long, name: String): Boolean {
+        if (renameProblem(id, name) != null) return false
+        dao.rename(id, name.trim())
+        return true
+    }
+
+    /** Deletes the playlist and its entries. The songs themselves stay on the phone. */
+    suspend fun delete(id: Long) = dao.delete(id)
+
     /** Adds songs at the end, skipping ones already in. Returns (added, skipped). */
     suspend fun add(playlistId: Long, songs: List<Song>): Pair<Int, Int> {
         val (add, skip) = PlaylistRules.withoutDuplicates(dao.entriesNow(playlistId), songs)

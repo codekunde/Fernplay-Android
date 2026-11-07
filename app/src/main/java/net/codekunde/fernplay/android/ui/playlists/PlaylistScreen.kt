@@ -64,6 +64,8 @@ import net.codekunde.fernplay.android.ui.components.ButtonKind
 import net.codekunde.fernplay.android.ui.components.EmptyState
 import net.codekunde.fernplay.android.ui.components.FernButton
 import net.codekunde.fernplay.android.ui.components.FernIconButton
+import net.codekunde.fernplay.android.ui.components.FernMenu
+import net.codekunde.fernplay.android.ui.components.FernMenuItem
 import net.codekunde.fernplay.android.ui.components.FernSnackbarHost
 import net.codekunde.fernplay.android.ui.theme.Fernplay
 
@@ -78,6 +80,9 @@ fun PlaylistScreen(
 ) {
     val c = Fernplay.colors
     val store = vm.playlists
+    var menuOpen by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf(false) }
     val view by remember(playlistId) { store.view(playlistId) }.collectAsStateWithLifecycle(null)
     val now by player.now
     val scope = rememberCoroutineScope()
@@ -113,7 +118,7 @@ fun PlaylistScreen(
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxWidth().height(64.dp).padding(start = 4.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().height(64.dp).padding(start = 4.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 FernIconButton(R.drawable.ic_back, "Back", onBack)
                 Column(Modifier.weight(1f).padding(start = 4.dp)) {
                     Text(
@@ -130,6 +135,15 @@ fun PlaylistScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = c.textDim,
                         )
+                    }
+                }
+                if (v != null) {
+                    Box {
+                        FernIconButton(R.drawable.ic_more, "Rename or delete playlist", { menuOpen = true })
+                        FernMenu(expanded = menuOpen, onDismiss = { menuOpen = false }) {
+                            FernMenuItem("Rename", R.drawable.ic_edit) { menuOpen = false; renaming = true }
+                            FernMenuItem("Delete playlist", R.drawable.ic_delete) { menuOpen = false; deleting = true }
+                        }
                     }
                 }
             }
@@ -228,6 +242,33 @@ fun PlaylistScreen(
             }
         }
         FernSnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+    }
+
+    if (renaming && v != null) {
+        RenamePlaylistDialog(
+            store,
+            playlistId,
+            current = v.name,
+            onDismiss = { renaming = false },
+            onRenamed = { newName ->
+                renaming = false
+                player.renameQueue(v.name, newName)
+            },
+        )
+    }
+    if (deleting && v != null) {
+        DeletePlaylistDialog(
+            v.name,
+            songCount = v.items.size,
+            onDismiss = { deleting = false },
+            onDelete = {
+                deleting = false
+                scope.launch {
+                    store.delete(playlistId)
+                    onBack()
+                }
+            },
+        )
     }
 }
 

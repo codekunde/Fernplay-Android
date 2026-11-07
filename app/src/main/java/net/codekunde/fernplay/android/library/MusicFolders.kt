@@ -46,4 +46,13 @@ object MusicFolders {
 
     fun includedByAny(chosen: Collection<String>, folder: String): Boolean =
         chosen.any { includes(it, folder) }
+
+    /**
+     * The chosen folders after adding [path], or null when a chosen folder already
+     * covers it. A new parent replaces the chosen folders inside it.
+     */
+    fun withAdded(chosen: Set<String>, path: String): Set<String>? {
+        if (includedByAny(chosen, path)) return null
+        return chosen.filterNot { includes(path, it) }.toSet() + path
+    }
 }

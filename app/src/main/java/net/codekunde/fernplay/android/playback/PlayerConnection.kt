@@ -30,6 +30,9 @@ data class NowPlaying(
     val repeat: RepeatState,
 )
 
+/** One song in the play queue, as the queue view lists it. */
+data class QueueItem(val mediaId: String, val title: String, val artist: String, val durationMs: Long)
+
 /**
  * The screens' handle on the player in [PlaybackService]. Connect while the app
  * is visible ([connect] in onStart, [release] in onStop).
@@ -53,8 +56,24 @@ class PlayerConnection(private val context: Context) {
     /** Position in the loaded song, updated twice a second while playing. */
     val position: LongState = _position
 
+    private val _queue = mutableStateOf<List<QueueItem>>(emptyList())
+    /** Every song in the play queue, in play order. */
+    val queue: State<List<QueueItem>> = _queue
+
     private val listener = object : Player.Listener {
-        override fun onEvents(player: Player, events: Player.Events) = refresh()
+        override fun onEvents(player: Player, events: Player.Events) {
+            if (events.contains(Player.EVENT_TIMELINE_CHANGED)) refreshQueue()
+            refresh()
+        }
+    }
+
+    private fun refreshQueue() {
+        val c = controller ?: return
+        _queue.value = (0 until c.mediaItemCount).map { i ->
+            val item = c.getMediaItemAt(i)
+            val m = item.mediaMetadata
+            QueueItem(item.mediaId, m.title?.toString().orEmpty(), m.artist?.toString().orEmpty(), m.durationMs ?: 0L)
+        }
     }
 
     private val tick = object : Runnable {
@@ -74,6 +93,7 @@ class PlayerConnection(private val context: Context) {
             if (future !== f) return@addListener // released meanwhile
             controller = c
             c.addListener(listener)
+            refreshQueue()
             refresh()
             pending.forEach { it(c) }
             pending.clear()
@@ -166,4 +186,32 @@ class PlayerConnection(private val context: Context) {
     }
 
     fun cycleRepeat() = withController { c -> c.repeatMode = RepeatState.of(c.repeatMode).next.mode }
+
+    /** Plays the queue's song at [index] from its start. */
+    fun skipTo(index: Int) = withController { c ->
+        if (index !in 0 until c.mediaItemCount) return@withController
+        c.seekToDefaultPosition(index)
+        if (c.playbackState == Player.STATE_IDLE) c.prepare()
+        c.play()
+    }
+
+    private var lastRemoved: Pair<Int, androidx.media3.common.MediaItem>? = null
+
+    /** Takes the song at [index] out of the queue (never the one playing); [undoRemove] puts it back. */
+    fun removeFromQueue(index: Int) = withController { c ->
+        if (index !in 0 until c.mediaItemCount || index == c.currentMediaItemIndex) return@withController
+        lastRemoved = index to c.getMediaItemAt(index)
+        c.removeMediaItem(index)
+    }
+
+    fun undoRemove() = withController { c ->
+        val (index, item) = lastRemoved ?: return@withController
+        lastRemoved = null
+        c.addMediaItem(index.coerceIn(0, c.mediaItemCount), item)
+    }
+
+    /** Keeps "Playing from" right after the playing playlist is renamed. */
+    fun renameQueue(from: String, to: String) = withController { c ->
+        if (c.playlistMetadata.title?.toString() == from) c.playlistMetadata = MediaItems.queueName(to)
+    }
 }

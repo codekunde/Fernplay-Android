@@ -52,6 +52,22 @@ class MusicFoldersTest {
     }
 
     @Test
+    fun `adding a folder in Settings`() {
+        // New, unrelated folder: added.
+        assertEquals(setOf("Music", "Podcasts"), MusicFolders.withAdded(setOf("Music"), "Podcasts"))
+        // Already chosen, or inside a chosen folder: nothing to change.
+        assertEquals(null, MusicFolders.withAdded(setOf("Music"), "Music"))
+        assertEquals(null, MusicFolders.withAdded(setOf("Music"), "Music/Live"))
+        // A parent replaces the chosen folders inside it, and only those.
+        assertEquals(
+            setOf("Download", "Music"),
+            MusicFolders.withAdded(setOf("Download/Albums", "Download/Mixes", "Music"), "Download"),
+        )
+        // A look-alike name is not a parent.
+        assertEquals(setOf("Music", "Musical"), MusicFolders.withAdded(setOf("Music"), "Musical"))
+    }
+
+    @Test
     fun `a root that is only a name prefix does not match`() {
         assertEquals(
             "storage/emulated/01/Music",

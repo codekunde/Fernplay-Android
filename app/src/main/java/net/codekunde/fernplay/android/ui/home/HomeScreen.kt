@@ -1,6 +1,13 @@
 package net.codekunde.fernplay.android.ui.home
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,6 +41,7 @@ import net.codekunde.fernplay.android.R
 import net.codekunde.fernplay.android.library.SongList
 import net.codekunde.fernplay.android.playback.PlayerConnection
 import net.codekunde.fernplay.android.ui.LibraryViewModel
+import net.codekunde.fernplay.android.ui.components.EmptyNote
 import net.codekunde.fernplay.android.ui.components.EmptyState
 import net.codekunde.fernplay.android.ui.components.FernIconButton
 import net.codekunde.fernplay.android.ui.components.FernTopBar
@@ -63,6 +71,12 @@ fun HomeScreen(
     val now by player.now
     val scope = rememberCoroutineScope()
     var creating by rememberSaveable { mutableStateOf(false) }
+    var refused by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    val askAccess = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        vm.refreshPermission()
+        refused = !ok
+    }
 
     Column(Modifier.fillMaxSize()) {
         FernTopBar(title = "Fernplay", showFern = true) {
@@ -81,12 +95,24 @@ fun HomeScreen(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             ) {
                 Button(
-                    onClick = onChooseFolders,
+                    // Access is asked for here, so the folders already chosen stay as they are.
+                    onClick = { if (granted) onChooseFolders() else askAccess.launch(vm.musicPermission) },
                     modifier = Modifier.padding(top = 8.dp).height(56.dp),
                     shape = RoundedCornerShape(28.dp),
                 ) {
                     Icon(painterResource(R.drawable.ic_folder), contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                     Text(if (granted) "Choose folders" else "Allow access")
+                }
+                if (!granted && refused) {
+                    // After two refusals Android stops asking; access can still be given in its settings.
+                    OutlinedButton(
+                        onClick = {
+                            context.startActivity(
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+                            )
+                        },
+                        modifier = Modifier.height(48.dp),
+                    ) { Text("Open Fernplay in Android settings") }
                 }
             }
             else -> LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
@@ -114,14 +140,7 @@ fun HomeScreen(
                 item(key = "label") { SectionLabel("Playlists") }
                 val list = playlists
                 if (list != null && list.isEmpty()) {
-                    item(key = "none") {
-                        Text(
-                            "No playlists yet.",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = c.textDim,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        )
-                    }
+                    item(key = "none") { EmptyNote("No playlists yet.") }
                 }
                 items(list.orEmpty(), key = { "p${it.id}" }) { p ->
                     PlaylistRow(

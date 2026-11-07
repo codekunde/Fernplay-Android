@@ -116,6 +116,65 @@ fun NewPlaylistDialog(store: PlaylistStore, onDismiss: () -> Unit, onCreated: (L
     LaunchedEffect(Unit) { focus.requestFocus() }
 }
 
+/** Asks for a new name; the old one is filled in and selected. [onRenamed] gets the new name. */
+@Composable
+fun RenamePlaylistDialog(store: PlaylistStore, id: Long, current: String, onDismiss: () -> Unit, onRenamed: (String) -> Unit) {
+    val scope = rememberCoroutineScope()
+    var field by remember {
+        mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(current, androidx.compose.ui.text.TextRange(0, current.length)))
+    }
+    var problem by remember { mutableStateOf<String?>(null) }
+    val focus = remember { FocusRequester() }
+    fun submit() {
+        val name = field.text
+        if (name.trim() == current) return onDismiss()
+        scope.launch {
+            problem = store.renameProblem(id, name)
+            if (problem == null && store.rename(id, name)) onRenamed(name.trim())
+        }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rename playlist") },
+        text = {
+            OutlinedTextField(
+                value = field,
+                onValueChange = { field = it.copy(text = it.text.take(PlaylistRules.MAX_NAME + 1)); problem = null },
+                label = { Text("Name") },
+                singleLine = true,
+                isError = problem != null,
+                supportingText = problem?.let { p -> { Text(p) } },
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { submit() }),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
+            )
+        },
+        confirmButton = { TextButton(onClick = ::submit, enabled = field.text.isNotBlank()) { Text("Rename") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+    LaunchedEffect(Unit) { focus.requestFocus() }
+}
+
+/** Delete asks first (design rule: nothing destructive on one tap). Songs stay on the phone. */
+@Composable
+fun DeletePlaylistDialog(name: String, songCount: Int, onDismiss: () -> Unit, onDelete: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete “$name”?") },
+        text = {
+            Text(
+                when (songCount) {
+                    0 -> "The playlist goes. Nothing else changes."
+                    1 -> "The playlist goes. Its song stays on your phone and in All songs."
+                    else -> "The playlist and its order go. The $songCount songs stay on your phone and in All songs."
+                }
+            )
+        },
+        confirmButton = { TextButton(onClick = onDelete) { Text("Delete", color = Fernplay.colors.amber) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
 /** The "+ New playlist" row under the playlists. */
 @Composable
 fun NewPlaylistRow(onClick: () -> Unit) {

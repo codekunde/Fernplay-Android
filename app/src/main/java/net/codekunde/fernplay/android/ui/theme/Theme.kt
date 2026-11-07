@@ -34,6 +34,8 @@ fun FernplayTheme(choice: ThemeChoice = ThemeChoice.System, content: @Composable
             background = c.background, onBackground = c.text,
             surface = c.background, onSurface = c.text,
             surfaceVariant = c.surface, onSurfaceVariant = c.textDim,
+            // Dialogs and menus sit on Fernplay's surface, not Material's tinted default.
+            surfaceContainer = c.surface, surfaceContainerHigh = c.surface,
             outline = c.outline,
         )
     } else {
@@ -44,6 +46,8 @@ fun FernplayTheme(choice: ThemeChoice = ThemeChoice.System, content: @Composable
             background = c.background, onBackground = c.text,
             surface = c.background, onSurface = c.text,
             surfaceVariant = c.surface, onSurfaceVariant = c.textDim,
+            // Dialogs and menus sit on Fernplay's surface, not Material's tinted default.
+            surfaceContainer = c.surface, surfaceContainerHigh = c.surface,
             outline = c.outline,
         )
     }

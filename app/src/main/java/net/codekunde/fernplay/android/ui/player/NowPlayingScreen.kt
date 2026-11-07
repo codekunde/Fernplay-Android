@@ -44,7 +44,7 @@ import net.codekunde.fernplay.android.ui.theme.LcdText
 
 /** Full-screen player: art, LCD, seek, transport, Repeat. Controls sit in thumb reach. */
 @Composable
-fun NowPlayingScreen(player: PlayerConnection, onClose: () -> Unit, onGym: () -> Unit) {
+fun NowPlayingScreen(player: PlayerConnection, onClose: () -> Unit, onGym: () -> Unit, onQueue: () -> Unit) {
     val c = Fernplay.colors
     val now by player.now
     val position by player.position
@@ -103,8 +103,11 @@ fun NowPlayingScreen(player: PlayerConnection, onClose: () -> Unit, onGym: () ->
                 PadButton(R.drawable.ic_next, "Next", player::next, Modifier.size(72.dp), 24.dp)
             }
 
-            // XFADE (v2) and QUEUE (stage 5) join Repeat in this row later.
-            RepeatToggle(n.repeat, player::cycleRepeat, Modifier.padding(horizontal = 16.dp).fillMaxWidth())
+            // XFADE (v2) joins this row later.
+            Row(Modifier.padding(horizontal = 16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                RepeatToggle(n.repeat, player::cycleRepeat, Modifier.weight(1f))
+                LabelButton(R.drawable.ic_queue, "Queue", onQueue, Modifier.weight(1f))
+            }
             Spacer(Modifier.weight(1f))
         }
     }
@@ -151,7 +154,7 @@ private fun LcdClock(positionMs: Long, durationMs: Long, big: Boolean, modifier:
  * length. No queue editing here, so a stray tap cannot change the list.
  */
 @Composable
-fun GymScreen(player: PlayerConnection, onClose: () -> Unit) {
+fun GymScreen(player: PlayerConnection, onClose: () -> Unit, onQueue: () -> Unit) {
     val c = Fernplay.colors
     val now by player.now
     val position by player.position
@@ -177,7 +180,7 @@ fun GymScreen(player: PlayerConnection, onClose: () -> Unit) {
                         .semantics { heading() },
                 )
             }
-            Gap48() // the queue button comes with the queue view (stage 5)
+            FernIconButton(R.drawable.ic_queue, "Queue", onQueue)
         }
 
         LcdPanel(Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp).fillMaxWidth(), vertical = 16.dp) {

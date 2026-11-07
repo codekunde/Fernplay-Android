@@ -23,6 +23,7 @@ import net.codekunde.fernplay.android.data.FernplayDatabase
 import net.codekunde.fernplay.android.data.PlaylistStore
 import net.codekunde.fernplay.android.library.LibraryRepository
 import net.codekunde.fernplay.android.library.Rescan
+import net.codekunde.fernplay.android.library.RescanProgress
 import net.codekunde.fernplay.android.library.MusicFolder
 import net.codekunde.fernplay.android.library.MusicFolders
 import net.codekunde.fernplay.android.library.Song
@@ -143,7 +144,42 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         _selected.value = null
     }
 
+    private val _rescanning = MutableStateFlow<RescanProgress?>(null)
+    /** Progress of a running rescan; null when none runs. */
+    val rescanning: StateFlow<RescanProgress?> = _rescanning
+
+    /** Asks Android to look at the chosen folders again; a second call while one runs is ignored. */
     fun rescan(done: () -> Unit) {
-        Rescan.folders(getApplication(), settings.value?.folders.orEmpty(), done)
+        if (_rescanning.value != null) return
+        _rescanning.value = RescanProgress(0, 0)
+        Rescan.folders(
+            getApplication(),
+            settings.value?.folders.orEmpty(),
+            progress = { _rescanning.value = it },
+            done = {
+                _rescanning.value = null
+                done()
+            },
+        )
+    }
+
+    // Settings: music folders. A chosen folder includes its subfolders.
+
+    /** Adds a folder picked in Settings; a folder already covered by a chosen one changes nothing. Returns false then. */
+    fun addFolder(path: String): Boolean {
+        val now = settings.value?.folders ?: return false
+        val next = MusicFolders.withAdded(now, path) ?: return false
+        viewModelScope.launch { store.setFolders(next) }
+        return true
+    }
+
+    fun removeFolder(path: String) {
+        val now = settings.value?.folders ?: return
+        viewModelScope.launch { store.setFolders(now - path) }
+    }
+
+    /** Puts back the folder list as it was before a removal (Undo). */
+    fun restoreFolders(folders: Set<String>) {
+        viewModelScope.launch { store.setFolders(folders) }
     }
 }

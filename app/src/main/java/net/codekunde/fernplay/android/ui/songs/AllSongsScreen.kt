@@ -80,6 +80,7 @@ import net.codekunde.fernplay.android.library.SongList
 import net.codekunde.fernplay.android.ui.components.ButtonKind
 import net.codekunde.fernplay.android.ui.components.FernButton
 import net.codekunde.fernplay.android.ui.components.FernSnackbarHost
+import net.codekunde.fernplay.android.ui.components.FernMenuItem
 import net.codekunde.fernplay.android.ui.playlists.AddToPlaylistSheet
 import net.codekunde.fernplay.android.library.SongSort
 import net.codekunde.fernplay.android.playback.PlayerConnection
@@ -186,6 +187,11 @@ fun AllSongsScreen(vm: LibraryViewModel, player: PlayerConnection, onBack: () ->
                     onPlay = { index -> player.play(v.songs, index, queueName = "All songs") },
                     onToggle = { id -> vm.toggleSelected(id, keepEmpty = addTo != null) },
                     onLongPress = { id -> if (sel == null) vm.startSelection(id) else vm.toggleSelected(id, keepEmpty = addTo != null) },
+                    onPlayNext = { song ->
+                        player.playNext(listOf(song), "All songs")
+                        note("“${song.title}” plays next")
+                    },
+                    onAddToPlaylist = { song -> sheetFor = listOf(song) },
                 )
             }
         }
@@ -363,6 +369,8 @@ private fun SongListWithStrip(
     onPlay: (Int) -> Unit,
     onToggle: (Long) -> Unit,
     onLongPress: (Long) -> Unit,
+    onPlayNext: (Song) -> Unit,
+    onAddToPlaylist: (Song) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val showStrip = letters.isNotEmpty() && songs.size > 1
@@ -386,8 +394,14 @@ private fun SongListWithStrip(
                         song = song,
                         playing = song.id.toString() == playingId,
                         onClick = { onPlay(index) },
-                        endPadding = if (showStrip) 34.dp else 16.dp,
+                        // With the strip, ⋮ stays clear of its 48 dp touch zone.
+                        endPadding = if (showStrip) 60.dp else 16.dp,
                         onLongClick = { onLongPress(song.id) },
+                        menu = { close ->
+                            FernMenuItem("Play next", R.drawable.ic_queue) { close(); onPlayNext(song) }
+                            FernMenuItem("Add to playlist", R.drawable.ic_playlist_add) { close(); onAddToPlaylist(song) }
+                            FernMenuItem("Select", R.drawable.ic_check) { close(); onLongPress(song.id) }
+                        },
                     )
                 }
             }

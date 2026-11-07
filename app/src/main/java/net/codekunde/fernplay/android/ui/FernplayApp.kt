@@ -27,6 +27,8 @@ import net.codekunde.fernplay.android.ui.home.HomeScreen
 import net.codekunde.fernplay.android.ui.player.GymScreen
 import net.codekunde.fernplay.android.ui.player.MiniPlayer
 import net.codekunde.fernplay.android.ui.player.NowPlayingScreen
+import net.codekunde.fernplay.android.ui.player.QueueScreen
+import net.codekunde.fernplay.android.ui.settings.SettingsScreen
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import net.codekunde.fernplay.android.ui.playlists.PlaylistScreen
@@ -44,6 +46,10 @@ object Routes {
     /** All songs opened from a playlist's "Add songs". */
     const val ADD_SONGS = "add-songs/{playlistId}"
 
+    /** The play queue; read-only when opened from the gym view. */
+    const val QUEUE = "queue/{editable}"
+
+    fun queue(editable: Boolean) = "queue/$editable"
     fun playlist(id: Long) = "playlist/$id"
     fun addSongs(playlistId: Long) = "add-songs/$playlistId"
 }
@@ -93,15 +99,25 @@ fun FernplayApp(vm: LibraryViewModel, player: PlayerConnection, nav: NavHostCont
                 val id = e.arguments?.getLong("playlistId") ?: return@composable
                 AllSongsScreen(vm, player, onBack = { nav.popBackStack() }, addTo = id)
             }
-            composable(Routes.SETTINGS) { NotBuiltYet("Settings", onBack = { nav.popBackStack() }) }
+            composable(Routes.SETTINGS) { SettingsScreen(vm, onBack = { nav.popBackStack() }) }
             composable(Routes.NOW_PLAYING) {
                 NowPlayingScreen(
                     player,
                     onClose = { nav.popBackStack() },
                     onGym = { nav.navigate(Routes.GYM) { launchSingleTop = true } },
+                    onQueue = { nav.navigate(Routes.queue(editable = true)) { launchSingleTop = true } },
                 )
             }
-            composable(Routes.GYM) { GymScreen(player, onClose = { nav.popBackStack() }) }
+            composable(Routes.GYM) {
+                GymScreen(
+                    player,
+                    onClose = { nav.popBackStack() },
+                    onQueue = { nav.navigate(Routes.queue(editable = false)) { launchSingleTop = true } },
+                )
+            }
+            composable(Routes.QUEUE, arguments = listOf(navArgument("editable") { type = NavType.BoolType })) { e ->
+                QueueScreen(player, editable = e.arguments?.getBoolean("editable") ?: false, onBack = { nav.popBackStack() })
+            }
         }
         // While selecting songs the bottom belongs to the selection's buttons.
         if (now != null && selecting == null && entry?.destination?.route in MINI_PLAYER_ROUTES) MiniPlayer(player, onOpen = openPlayer)
@@ -111,15 +127,3 @@ fun FernplayApp(vm: LibraryViewModel, player: PlayerConnection, nav: NavHostCont
 /** Screens that show the mini player when something is queued. */
 private val MINI_PLAYER_ROUTES = setOf(Routes.HOME, Routes.ALL_SONGS, Routes.PLAYLIST)
 
-@Composable
-private fun NotBuiltYet(title: String, onBack: () -> Unit) {
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FernTopBar(title = title, onBack = onBack)
-        Text(
-            "Not built yet.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = Fernplay.colors.textDim,
-            modifier = Modifier.padding(horizontal = 16.dp),
-        )
-    }
-}

@@ -206,6 +206,31 @@ fun RepeatToggle(
     }
 }
 
+/** The plain toggle-shaped button beside Repeat (QUEUE): outline, icon over a label. */
+@Composable
+fun LabelButton(@DrawableRes icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val c = Fernplay.colors
+    val shape = RoundedCornerShape(20.dp)
+    Column(
+        modifier
+            .height(64.dp)
+            .clip(shape)
+            .border(2.dp, c.outline, shape)
+            .clickable(role = Role.Button, onClickLabel = null, onClick = onClick)
+            .padding(horizontal = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+    ) {
+        Icon(painterResource(icon), contentDescription = null, tint = c.text, modifier = Modifier.size(24.dp))
+        Text(
+            label.uppercase(),
+            style = TextStyle(fontSize = 12.sp, lineHeight = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp),
+            color = c.text,
+            maxLines = 1,
+        )
+    }
+}
+
 /** Thin progress line along the bottom of the mini player. */
 @Composable
 fun MiniProgress(fraction: Float, modifier: Modifier = Modifier) {

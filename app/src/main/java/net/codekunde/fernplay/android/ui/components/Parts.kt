@@ -8,6 +8,11 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -91,6 +96,17 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     )
 }
 
+/** A short dim line inside a list where rows would be ("No playlists yet."). */
+@Composable
+fun EmptyNote(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodyLarge,
+        color = Fernplay.colors.textDim,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+    )
+}
+
 private val tileGradients = listOf(
     Color(0xFF2A4E27) to Color(0xFF0D1A10),
     Color(0xFF4A4F62) to Color(0xFF1A1C23),
@@ -123,8 +139,11 @@ fun SongRow(
     onClick: () -> Unit,
     endPadding: Dp = 16.dp,
     onLongClick: (() -> Unit)? = null,
+    /** The row's ⋮ menu lines; `close` shuts the menu. No ⋮ button when null. */
+    menu: (@Composable ColumnScope.(close: () -> Unit) -> Unit)? = null,
 ) {
     val c = Fernplay.colors
+    var menuOpen by remember { mutableStateOf(false) }
     Row(
         Modifier
             .fillMaxWidth()
@@ -136,7 +155,8 @@ fun SongRow(
                 onLongClick = onLongClick,
             )
             .then(if (playing) Modifier.semantics { stateDescription = "Now playing" } else Modifier)
-            .padding(start = 16.dp, end = endPadding, top = 8.dp, bottom = 8.dp),
+            // The ⋮ button brings its own 12 dp of space on each side.
+            .padding(start = 16.dp, end = if (menu != null) (endPadding - 12.dp).coerceAtLeast(4.dp) else endPadding, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -158,6 +178,12 @@ fun SongRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+        }
+        if (menu != null) {
+            Box {
+                FernIconButton(R.drawable.ic_more, "More for ${song.title}", { menuOpen = true }, tint = c.textDim)
+                FernMenu(expanded = menuOpen, onDismiss = { menuOpen = false }) { menu { menuOpen = false } }
+            }
         }
     }
 }
