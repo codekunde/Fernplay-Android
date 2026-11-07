@@ -14,7 +14,7 @@ android {
         minSdk = 26 // Android 8.0
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0-dev"
+        versionName = "0.1.0"
     }
 
     // The release key lives outside the repo. Set these in ~/.gradle/gradle.properties
