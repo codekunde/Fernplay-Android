@@ -23,6 +23,21 @@ JDK 17 and the Android SDK (platform 35).
 
 The debug APK is written to `app/build/outputs/apk/debug/`.
 
+`./gradlew testDebugUnitTest` runs on the JVM, no device needed: Room and ExoPlayer run under Robolectric.
+
+### Release build
+
+`./gradlew assembleRelease` signs the APK when these Gradle properties are set, for example in `~/.gradle/gradle.properties` (never in the repo):
+
+```
+fernplay.storeFile=/path/to/release.jks
+fernplay.storePassword=...
+fernplay.keyAlias=...
+fernplay.keyPassword=...
+```
+
+Without them the APK is written unsigned to `app/build/outputs/apk/release/`.
+
 ## Licence
 
 MIT, see [LICENSE](LICENSE). The LCD font, Share Tech Mono, is under the SIL Open Font License 1.1, see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

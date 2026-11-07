@@ -120,9 +120,7 @@ class PlaybackService : MediaSessionService() {
     /** Loads the saved queue without starting it: Play (in the app, on a headset) carries on. */
     private fun restore(player: Player) {
         val state = runCatching { store.read() }.getOrNull() ?: return
-        player.playlistMetadata = MediaItems.queueName(state.queue.name)
-        player.setMediaItems(state.queue.items.map(MediaItems::of), state.startIndex, state.startPositionMs)
-        player.repeatMode = state.position.repeatMode
+        QueueEdits.restore(player, state)
         savedQueueIds = state.queue.items.map { it.id }
         savedQueueName = state.queue.name
     }
@@ -152,7 +150,7 @@ class PlaybackService : MediaSessionService() {
      */
     private fun skipBrokenSong(player: Player) {
         errorsInRow++
-        if (errorsInRow < player.mediaItemCount && player.hasNextMediaItem()) {
+        if (QueueEdits.skipAfterError(errorsInRow, player)) {
             player.seekToNextMediaItem()
             player.prepare()
             player.play()

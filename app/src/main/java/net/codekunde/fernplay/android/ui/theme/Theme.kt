@@ -18,13 +18,17 @@ object Fernplay {
         @Composable @ReadOnlyComposable get() = LocalFernplayColors.current
 }
 
+/** Whether [choice] means dark right now (System follows the phone). */
+@Composable
+fun isDark(choice: ThemeChoice): Boolean = when (choice) {
+    ThemeChoice.System -> isSystemInDarkTheme()
+    ThemeChoice.Dark -> true
+    ThemeChoice.Light -> false
+}
+
 @Composable
 fun FernplayTheme(choice: ThemeChoice = ThemeChoice.System, content: @Composable () -> Unit) {
-    val dark = when (choice) {
-        ThemeChoice.System -> isSystemInDarkTheme()
-        ThemeChoice.Dark -> true
-        ThemeChoice.Light -> false
-    }
+    val dark = isDark(choice)
     val c = if (dark) DarkFernplayColors else LightFernplayColors
     val scheme = if (dark) {
         darkColorScheme(

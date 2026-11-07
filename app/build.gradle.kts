@@ -17,9 +17,24 @@ android {
         versionName = "0.1.0-dev"
     }
 
+    // The release key lives outside the repo. Set these in ~/.gradle/gradle.properties
+    // (or as -P options); without them the release APK is built unsigned.
+    val storeFile = providers.gradleProperty("fernplay.storeFile").orNull
+    signingConfigs {
+        if (storeFile != null) {
+            create("release") {
+                this.storeFile = file(storeFile)
+                storePassword = providers.gradleProperty("fernplay.storePassword").get()
+                keyAlias = providers.gradleProperty("fernplay.keyAlias").get()
+                keyPassword = providers.gradleProperty("fernplay.keyPassword").get()
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
@@ -32,6 +47,9 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
     }
 }
 
@@ -58,4 +76,9 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
+    // Room and ExoPlayer on the JVM, without an emulator.
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

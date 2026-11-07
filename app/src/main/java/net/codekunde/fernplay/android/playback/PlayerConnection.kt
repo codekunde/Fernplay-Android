@@ -144,9 +144,7 @@ class PlayerConnection(private val context: Context) {
         val items = songs.map(MediaItems::of)
         withController { c ->
             // Shuffle is done by ordering the list, so "7 / 24" and resume follow what is heard.
-            c.shuffleModeEnabled = false
-            c.playlistMetadata = MediaItems.queueName(queueName)
-            c.setMediaItems(items, index.coerceIn(0, items.lastIndex), 0L)
+            QueueEdits.replace(c, items, index, queueName)
             c.prepare()
             c.play()
         }
@@ -156,11 +154,7 @@ class PlayerConnection(private val context: Context) {
     fun playNext(songs: List<Song>, queueName: String) {
         if (songs.isEmpty()) return
         withController { c ->
-            if (c.mediaItemCount == 0) {
-                play(songs, 0, queueName)
-                return@withController
-            }
-            c.addMediaItems(c.currentMediaItemIndex + 1, songs.map(MediaItems::of))
+            if (!QueueEdits.playNext(c, songs.map(MediaItems::of))) play(songs, 0, queueName)
         }
     }
 
@@ -185,7 +179,7 @@ class PlayerConnection(private val context: Context) {
         _position.longValue = positionMs
     }
 
-    fun cycleRepeat() = withController { c -> c.repeatMode = RepeatState.of(c.repeatMode).next.mode }
+    fun cycleRepeat() = withController(QueueEdits::cycleRepeat)
 
     /** Plays the queue's song at [index] from its start. */
     fun skipTo(index: Int) = withController { c ->
@@ -199,19 +193,15 @@ class PlayerConnection(private val context: Context) {
 
     /** Takes the song at [index] out of the queue (never the one playing); [undoRemove] puts it back. */
     fun removeFromQueue(index: Int) = withController { c ->
-        if (index !in 0 until c.mediaItemCount || index == c.currentMediaItemIndex) return@withController
-        lastRemoved = index to c.getMediaItemAt(index)
-        c.removeMediaItem(index)
+        QueueEdits.remove(c, index)?.let { lastRemoved = it }
     }
 
     fun undoRemove() = withController { c ->
-        val (index, item) = lastRemoved ?: return@withController
+        val removed = lastRemoved ?: return@withController
         lastRemoved = null
-        c.addMediaItem(index.coerceIn(0, c.mediaItemCount), item)
+        QueueEdits.undoRemove(c, removed)
     }
 
     /** Keeps "Playing from" right after the playing playlist is renamed. */
-    fun renameQueue(from: String, to: String) = withController { c ->
-        if (c.playlistMetadata.title?.toString() == from) c.playlistMetadata = MediaItems.queueName(to)
-    }
+    fun renameQueue(from: String, to: String) = withController { c -> QueueEdits.renameQueue(c, from, to) }
 }
