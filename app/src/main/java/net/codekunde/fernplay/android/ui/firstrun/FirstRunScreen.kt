@@ -49,6 +49,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.codekunde.fernplay.android.R
+import net.codekunde.fernplay.android.library.FolderChoice
 import net.codekunde.fernplay.android.library.MusicFolder
 import net.codekunde.fernplay.android.library.MusicFolders
 import net.codekunde.fernplay.android.ui.LibraryViewModel
@@ -141,7 +142,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.FolderChooser(vm: Lib
     val pickedState by vm.picked.collectAsStateWithLifecycle()
     val extra by vm.extraFolders.collectAsStateWithLifecycle()
     val found = folders
-    val picked = pickedState ?: found?.map { it.path }?.toSet() ?: emptySet()
+    val picked = pickedState ?: FolderChoice(found?.map { it.path }?.toSet() ?: emptySet())
 
     val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
@@ -152,7 +153,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.FolderChooser(vm: Lib
 
     val rows: List<MusicFolder> = (found.orEmpty() + extra.filter { e -> found.orEmpty().none { it.path == e } }.map { MusicFolder(it, 0) })
     val songCount = remember(rows, picked) {
-        found.orEmpty().filter { MusicFolders.includedByAny(picked, it.path) }.sumOf { it.songCount }
+        found.orEmpty().filter { picked.includes(it.path) }.sumOf { it.songCount }
     }
 
     LazyColumn(Modifier.weight(1f)) {
@@ -171,12 +172,11 @@ private fun androidx.compose.foundation.layout.ColumnScope.FolderChooser(vm: Lib
             }
         }
         items(rows, key = { it.path }) { folder ->
-            // A ticked parent already includes this folder: show it ticked and locked.
-            val parent = picked.filter { it != folder.path && MusicFolders.includes(it, folder.path) }.minByOrNull { it.length }
+            // Unticking a folder a ticked parent brings in leaves it out of that parent.
             FolderRow(
                 folder,
-                checked = parent != null || folder.path in picked,
-                includedBy = parent,
+                checked = picked.includes(folder.path),
+                parent = picked.parentOf(folder.path),
                 onToggle = { vm.togglePicked(folder.path, picked) },
             )
         }
@@ -200,12 +200,12 @@ private fun androidx.compose.foundation.layout.ColumnScope.FolderChooser(vm: Lib
     Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
         Button(
             onClick = { onDone(); vm.finishSetup(picked) },
-            enabled = picked.isNotEmpty(),
+            enabled = picked.chosen.isNotEmpty(),
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(28.dp),
             colors = ButtonDefaults.buttonColors(containerColor = c.accent, contentColor = c.onAccent),
         ) {
-            Text(if (picked.isEmpty()) "Choose at least one folder" else "Scan ${songs(songCount)}")
+            Text(if (picked.chosen.isEmpty()) "Choose at least one folder" else "Scan ${songs(songCount)}")
         }
         Text(
             "Folders can be changed later in Settings.",
@@ -218,7 +218,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.FolderChooser(vm: Lib
 }
 
 @Composable
-private fun FolderRow(folder: MusicFolder, checked: Boolean, includedBy: String?, onToggle: () -> Unit) {
+private fun FolderRow(folder: MusicFolder, checked: Boolean, parent: String?, onToggle: () -> Unit) {
     val c = Fernplay.colors
     Row(
         Modifier
@@ -227,7 +227,7 @@ private fun FolderRow(folder: MusicFolder, checked: Boolean, includedBy: String?
             .clip(RoundedCornerShape(16.dp))
             .background(if (checked) c.selected else c.background)
             .heightIn(min = 64.dp)
-            .toggleable(value = checked, enabled = includedBy == null, role = Role.Checkbox, onValueChange = { onToggle() })
+            .toggleable(value = checked, role = Role.Checkbox, onValueChange = { onToggle() })
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -247,7 +247,11 @@ private fun FolderRow(folder: MusicFolder, checked: Boolean, includedBy: String?
             Text(folderLabel(folder.path), style = MaterialTheme.typography.bodyLarge, color = c.text)
             val count = if (folder.songCount == 0) "No songs indexed here yet" else songs(folder.songCount)
             Text(
-                if (includedBy != null) "$count · in ${folderLabel(includedBy)}" else count,
+                when {
+                    parent == null -> count
+                    checked -> "$count · in ${folderLabel(parent)}"
+                    else -> "$count · left out of ${folderLabel(parent)}"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = c.textDim,
             )

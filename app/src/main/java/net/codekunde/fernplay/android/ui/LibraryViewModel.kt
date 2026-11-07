@@ -21,11 +21,11 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import net.codekunde.fernplay.android.data.FernplayDatabase
 import net.codekunde.fernplay.android.data.PlaylistStore
+import net.codekunde.fernplay.android.library.FolderChoice
 import net.codekunde.fernplay.android.library.LibraryRepository
 import net.codekunde.fernplay.android.library.Rescan
 import net.codekunde.fernplay.android.library.RescanProgress
 import net.codekunde.fernplay.android.library.MusicFolder
-import net.codekunde.fernplay.android.library.MusicFolders
 import net.codekunde.fernplay.android.library.Song
 import net.codekunde.fernplay.android.library.SongList
 import net.codekunde.fernplay.android.library.SongSort
@@ -74,7 +74,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     /** Songs in the chosen folders: Fernplay's library. */
     val librarySongs: StateFlow<List<Song>?> = combine(allSongs, settings) { songs, s ->
         if (songs == null || s == null) null
-        else songs.filter { MusicFolders.includedByAny(s.folders, it.folder) }
+        else s.choice.let { choice -> songs.filter { choice.includes(it.folder) } }
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -93,24 +93,24 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
 
     // First run: which folders are ticked. Null until the user changes something:
     // then every folder Android found is ticked.
-    private val _picked = MutableStateFlow<Set<String>?>(null)
-    val picked: StateFlow<Set<String>?> = _picked
+    private val _picked = MutableStateFlow<FolderChoice?>(null)
+    val picked: StateFlow<FolderChoice?> = _picked
 
     /** Folders added with Android's folder picker that the music index has no songs for (yet). */
     private val _extraFolders = MutableStateFlow<Set<String>>(emptySet())
     val extraFolders: StateFlow<Set<String>> = _extraFolders
 
-    fun togglePicked(path: String, current: Set<String>) {
-        _picked.value = if (path in current) current - path else current + path
+    fun togglePicked(path: String, current: FolderChoice) {
+        _picked.value = if (current.includes(path)) current.withOff(path) else current.withOn(path)
     }
 
-    fun addPickedFolder(path: String, current: Set<String>) {
+    fun addPickedFolder(path: String, current: FolderChoice) {
         if (folders.value.orEmpty().none { it.path == path }) _extraFolders.value += path
-        _picked.value = current + path
+        _picked.value = current.withOn(path)
     }
 
-    fun finishSetup(folders: Set<String>) {
-        viewModelScope.launch { store.finishSetup(folders) }
+    fun finishSetup(choice: FolderChoice) {
+        viewModelScope.launch { store.finishSetup(choice) }
     }
 
     fun setTheme(theme: ThemeChoice) {
@@ -163,23 +163,30 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
-    // Settings: music folders. A chosen folder includes its subfolders.
+    // Settings: music folders. A chosen folder includes its subfolders, except those left out.
 
-    /** Adds a folder picked in Settings; a folder already covered by a chosen one changes nothing. Returns false then. */
+    /** Adds a folder picked in Settings; a folder already in changes nothing. Returns false then. */
     fun addFolder(path: String): Boolean {
-        val now = settings.value?.folders ?: return false
-        val next = MusicFolders.withAdded(now, path) ?: return false
+        val now = settings.value?.choice ?: return false
+        val next = now.withAdded(path) ?: return false
         viewModelScope.launch { store.setFolders(next) }
         return true
     }
 
+    /** Stops using a chosen folder, or leaves out a subfolder a chosen parent brings in. */
     fun removeFolder(path: String) {
-        val now = settings.value?.folders ?: return
-        viewModelScope.launch { store.setFolders(now - path) }
+        val now = settings.value?.choice ?: return
+        viewModelScope.launch { store.setFolders(now.withOff(path)) }
     }
 
-    /** Puts back the folder list as it was before a removal (Undo). */
-    fun restoreFolders(folders: Set<String>) {
-        viewModelScope.launch { store.setFolders(folders) }
+    /** Takes a left-out folder back in; it stays listed, so it can be left out again. */
+    fun addBack(path: String) {
+        val now = settings.value?.choice ?: return
+        viewModelScope.launch { store.setFolders(FolderChoice(now.chosen + path, now.leftOut - path)) }
+    }
+
+    /** Puts back the folders as they were before a change (Undo). */
+    fun restoreFolders(choice: FolderChoice) {
+        viewModelScope.launch { store.setFolders(choice) }
     }
 }

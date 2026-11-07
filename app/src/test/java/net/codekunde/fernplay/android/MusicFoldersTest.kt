@@ -1,5 +1,6 @@
 package net.codekunde.fernplay.android
 
+import net.codekunde.fernplay.android.library.FolderChoice
 import net.codekunde.fernplay.android.library.MusicFolders
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -54,17 +55,62 @@ class MusicFoldersTest {
     @Test
     fun `adding a folder in Settings`() {
         // New, unrelated folder: added.
-        assertEquals(setOf("Music", "Podcasts"), MusicFolders.withAdded(setOf("Music"), "Podcasts"))
+        assertEquals(setOf("Music", "Podcasts"), FolderChoice(setOf("Music")).withAdded("Podcasts")?.chosen)
         // Already chosen, or inside a chosen folder: nothing to change.
-        assertEquals(null, MusicFolders.withAdded(setOf("Music"), "Music"))
-        assertEquals(null, MusicFolders.withAdded(setOf("Music"), "Music/Live"))
+        assertEquals(null, FolderChoice(setOf("Music")).withAdded("Music"))
+        assertEquals(null, FolderChoice(setOf("Music")).withAdded("Music/Live"))
         // A parent replaces the chosen folders inside it, and only those.
         assertEquals(
             setOf("Download", "Music"),
-            MusicFolders.withAdded(setOf("Download/Albums", "Download/Mixes", "Music"), "Download"),
+            FolderChoice(setOf("Download/Albums", "Download/Mixes", "Music")).withAdded("Download")?.chosen,
         )
         // A look-alike name is not a parent.
-        assertEquals(setOf("Music", "Musical"), MusicFolders.withAdded(setOf("Music"), "Musical"))
+        assertEquals(setOf("Music", "Musical"), FolderChoice(setOf("Music")).withAdded("Musical")?.chosen)
+        // Adding a left-out folder with the picker takes it back in.
+        assertEquals(FolderChoice(setOf("Music")), FolderChoice(setOf("Music"), setOf("Music/Telegram")).withAdded("Music/Telegram"))
+    }
+
+    @Test
+    fun `a subfolder of a ticked folder can be left out`() {
+        // First run ticks every folder Android found, parent and subfolder alike.
+        val found = FolderChoice(setOf("Music", "Music/Telegram", "Download"))
+        val off = found.withOff("Music/Telegram")
+        assertEquals(false, off.includes("Music/Telegram"))
+        assertEquals(false, off.includes("Music/Telegram/Voice"))
+        assertEquals(true, off.includes("Music"))
+        assertEquals(true, off.includes("Music/Live"))
+        assertEquals(setOf("Music/Telegram"), off.leftOut)
+        // Ticked again: back in, nothing left out.
+        val on = off.withOn("Music/Telegram")
+        assertEquals(true, on.includes("Music/Telegram"))
+        assertEquals(emptySet<String>(), on.leftOut)
+    }
+
+    @Test
+    fun `a folder with no chosen parent is just unticked`() {
+        val off = FolderChoice(setOf("Music", "Download")).withOff("Download")
+        assertEquals(FolderChoice(setOf("Music")), off)
+        assertEquals(FolderChoice(setOf("Music", "Download")), off.withOn("Download"))
+    }
+
+    @Test
+    fun `the deepest folder wins`() {
+        val choice = FolderChoice(setOf("Music", "Music/Telegram/Best"), setOf("Music/Telegram"))
+        assertEquals(false, choice.includes("Music/Telegram"))
+        assertEquals(true, choice.includes("Music/Telegram/Best"))
+        assertEquals(true, choice.includes("Music/Telegram/Best/Live"))
+        // The whole storage chosen, one folder left out.
+        val all = FolderChoice(setOf(""), setOf("Android"))
+        assertEquals(false, all.includes("Android/media"))
+        assertEquals(true, all.includes("Music"))
+    }
+
+    @Test
+    fun `left-out folders go when their parent goes`() {
+        val choice = FolderChoice(setOf("Music"), setOf("Music/Telegram"))
+        assertEquals(FolderChoice(emptySet()), choice.withOff("Music"))
+        assertEquals("Music", choice.parentOf("Music/Telegram"))
+        assertEquals(null, choice.parentOf("Music"))
     }
 
     @Test

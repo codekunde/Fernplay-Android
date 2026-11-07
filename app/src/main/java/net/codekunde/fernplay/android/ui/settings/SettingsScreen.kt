@@ -73,7 +73,10 @@ fun SettingsScreen(vm: LibraryViewModel, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     val s = settings ?: return
+    val choice = s.choice
     val folders = s.folders.sortedBy { it.lowercase() }
+    // Chosen and left-out folders in one list, so "Music / Telegram" sits under "Music".
+    val rows = (s.folders + s.leftOut).sortedBy { it.lowercase() }
 
     fun note(text: String) = scope.launch {
         snackbar.currentSnackbarData?.dismiss()
@@ -92,15 +95,19 @@ fun SettingsScreen(vm: LibraryViewModel, onBack: () -> Unit) {
         }
     }
 
-    fun remove(path: String) {
-        val before = s.folders
-        vm.removeFolder(path)
+    fun withUndo(text: String, change: () -> Unit) {
+        val before = choice
+        change()
         scope.launch {
             snackbar.currentSnackbarData?.dismiss()
-            val r = snackbar.showSnackbar("Stopped using ${folderLabel(path)}", actionLabel = "Undo", duration = SnackbarDuration.Long)
+            val r = snackbar.showSnackbar(text, actionLabel = "Undo", duration = SnackbarDuration.Long)
             if (r == SnackbarResult.ActionPerformed) vm.restoreFolders(before)
         }
     }
+
+    fun remove(path: String, parent: String?) = withUndo(
+        if (parent == null) "Stopped using ${folderLabel(path)}" else "Left out ${folderLabel(path)}",
+    ) { vm.removeFolder(path) }
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -110,11 +117,15 @@ fun SettingsScreen(vm: LibraryViewModel, onBack: () -> Unit) {
                 if (folders.isEmpty()) {
                     item(key = "no-folders") { EmptyNote("No folders chosen, so no songs show. Add the folder your music is in.") }
                 }
-                items(folders, key = { "f:$it" }) { path ->
-                    val count = allSongs?.count { MusicFolders.includes(path, it.folder) }
-                    // A folder inside another chosen one is shown as such; removing it alone would change nothing.
-                    val parent = folders.filter { it != path && MusicFolders.includes(it, path) }.minByOrNull { it.length }
-                    FolderRow(path, count, includedBy = parent, onRemove = { remove(path) })
+                items(rows, key = { "f:$it" }) { path ->
+                    val parent = choice.parentOf(path)
+                    if (path in s.leftOut) {
+                        val count = allSongs?.count { MusicFolders.includes(path, it.folder) }
+                        LeftOutRow(path, count, parent, onAddBack = { withUndo("Added back ${folderLabel(path)}") { vm.addBack(path) } })
+                    } else {
+                        val count = allSongs?.count { MusicFolders.includes(path, it.folder) && choice.includes(it.folder) }
+                        FolderRow(path, count, includedBy = parent, onRemove = { remove(path, parent) })
+                    }
                 }
                 item(key = "add") {
                     AddAndRescanRow(
@@ -152,24 +163,45 @@ private fun FolderRow(path: String, songCount: Int?, includedBy: String?, onRemo
         Icon(painterResource(R.drawable.ic_folder), contentDescription = null, tint = c.accentLight)
         Column(Modifier.weight(1f)) {
             Text(folderLabel(path), style = MaterialTheme.typography.bodyLarge, color = c.text)
-            val count = when (songCount) {
-                null -> "Counting…"
-                0 -> "No songs indexed here yet"
-                1 -> "1 song"
-                else -> "${NumberFormat.getIntegerInstance().format(songCount)} songs"
-            }
             Text(
-                if (includedBy != null) "$count · in ${folderLabel(includedBy)}" else count,
+                if (includedBy != null) "${countText(songCount)} · in ${folderLabel(includedBy)}" else countText(songCount),
                 style = MaterialTheme.typography.bodyMedium,
                 color = c.textDim,
             )
         }
-        if (includedBy == null) {
-            FernIconButton(R.drawable.ic_close, "Stop using ${folderLabel(path)}", onRemove, tint = c.textDim, iconSize = 20.dp)
-        } else {
-            Box(Modifier.size(48.dp))
-        }
+        // A subfolder of a chosen folder is left out of it; a top-level folder stops being used.
+        val label = if (includedBy == null) "Stop using ${folderLabel(path)}" else "Leave out ${folderLabel(path)}"
+        FernIconButton(R.drawable.ic_close, label, onRemove, tint = c.textDim, iconSize = 20.dp)
     }
+}
+
+/** A subfolder left out of a chosen folder, dimmed, with a button to take it back in. */
+@Composable
+private fun LeftOutRow(path: String, songCount: Int?, parent: String?, onAddBack: () -> Unit) {
+    val c = Fernplay.colors
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Icon(painterResource(R.drawable.ic_folder), contentDescription = null, tint = c.textDim)
+        Column(Modifier.weight(1f)) {
+            Text(folderLabel(path), style = MaterialTheme.typography.bodyLarge, color = c.textDim)
+            Text(
+                if (parent != null) "${countText(songCount)} · left out of ${folderLabel(parent)}" else "${countText(songCount)} · left out",
+                style = MaterialTheme.typography.bodyMedium,
+                color = c.textDim,
+            )
+        }
+        FernIconButton(R.drawable.ic_add, "Add back ${folderLabel(path)}", onAddBack, tint = c.accentLight, iconSize = 20.dp)
+    }
+}
+
+private fun countText(songCount: Int?): String = when (songCount) {
+    null -> "Counting…"
+    0 -> "No songs indexed here yet"
+    1 -> "1 song"
+    else -> "${NumberFormat.getIntegerInstance().format(songCount)} songs"
 }
 
 @Composable

@@ -46,13 +46,52 @@ object MusicFolders {
 
     fun includedByAny(chosen: Collection<String>, folder: String): Boolean =
         chosen.any { includes(it, folder) }
+}
+
+/**
+ * The library's folders: each chosen folder with its subfolders, minus the folders
+ * left out ("Music" chosen, "Music/Telegram" left out). The deepest matching entry
+ * wins, so a folder chosen inside a left-out one is back in.
+ */
+data class FolderChoice(val chosen: Set<String>, val leftOut: Set<String> = emptySet()) {
+
+    fun includes(folder: String): Boolean {
+        val on = chosen.filter { MusicFolders.includes(it, folder) }.maxOfOrNull { it.length } ?: return false
+        val off = leftOut.filter { MusicFolders.includes(it, folder) }.maxOfOrNull { it.length } ?: return true
+        return on > off
+    }
+
+    /** The chosen folder that brings [folder] in from above, if any. */
+    fun parentOf(folder: String): String? =
+        chosen.filter { it != folder && MusicFolders.includes(it, folder) }.minByOrNull { it.length }
+
+    /** Ticks [path]: no longer left out, and chosen if nothing else brings it in. */
+    fun withOn(path: String): FolderChoice {
+        val next = copy(leftOut = leftOut - path)
+        return (if (next.includes(path)) next else next.copy(chosen = chosen + path)).tidy()
+    }
+
+    /** Unticks [path]: no longer chosen, and left out if a chosen parent still brings it in. */
+    fun withOff(path: String): FolderChoice {
+        val next = copy(chosen = chosen - path, leftOut = leftOut - path)
+        return (if (next.includes(path)) next.copy(leftOut = next.leftOut + path) else next).tidy()
+    }
 
     /**
-     * The chosen folders after adding [path], or null when a chosen folder already
-     * covers it. A new parent replaces the chosen folders inside it.
+     * After adding [path] with the folder picker in Settings, or null when it is
+     * already in. The whole folder comes in: chosen and left-out folders inside it go.
      */
-    fun withAdded(chosen: Set<String>, path: String): Set<String>? {
-        if (includedByAny(chosen, path)) return null
-        return chosen.filterNot { includes(path, it) }.toSet() + path
+    fun withAdded(path: String): FolderChoice? {
+        if (includes(path)) return null
+        val cleared = FolderChoice(
+            chosen.filterNot { MusicFolders.includes(path, it) }.toSet(),
+            leftOut.filterNot { MusicFolders.includes(path, it) }.toSet(),
+        )
+        // A left-out folder only needs taking back in; its parent brings it in again.
+        return (if (cleared.includes(path)) cleared else cleared.copy(chosen = cleared.chosen + path)).tidy()
     }
+
+    /** Drops left-out folders that would be out anyway. */
+    private fun tidy(): FolderChoice =
+        copy(leftOut = leftOut.filter { copy(leftOut = leftOut - it).includes(it) }.toSet())
 }
