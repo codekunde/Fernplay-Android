@@ -8,7 +8,7 @@ The EQ is the one from Fernplay for Windows: ten bands from 60 Hz to 16 kHz, a p
 
 It is the Android sibling of [Fernplay](https://github.com/codekunde/Fernplay) for Windows and shares its look: a dark frame, a green LCD-style display and a fern.
 
-**Status:** 0.1.0, the first release. Download `fernplay-0.1.0.apk` from the Releases page and open it on your phone (Android asks once to allow installs from that app).
+**Status:** 0.2.0 adds the equalizer and a sleep timer. Download `fernplay-0.2.0.apk` from the Releases page and open it on your phone (Android asks once to allow installs from that app); it installs over 0.1.0 and keeps your playlists.
 
 ## Requirements
 
