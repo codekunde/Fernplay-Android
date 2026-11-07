@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -461,7 +462,6 @@ private fun SelectableSongRow(song: Song, checked: Boolean, onToggle: () -> Unit
  */
 @Composable
 private fun AzStrip(active: Char?, modifier: Modifier, onLetter: (Char) -> Unit) {
-    val c = Fernplay.colors
     var height by remember { mutableIntStateOf(1) }
     val letters = SongList.STRIP
     fun letterAt(y: Float): Char = letters[((y / height) * letters.size).toInt().coerceIn(0, letters.lastIndex)]
@@ -482,27 +482,44 @@ private fun AzStrip(active: Char?, modifier: Modifier, onLetter: (Char) -> Unit)
             },
         contentAlignment = Alignment.CenterEnd,
     ) {
-        Column(
-            Modifier.width(26.dp).fillMaxHeight(),
-            verticalArrangement = Arrangement.SpaceBetween,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            letters.forEach { letter ->
-                val on = letter == active
-                Box(
-                    Modifier.size(width = 24.dp, height = 16.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (on) c.accent else c.background.copy(alpha = 0f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        letter.toString(),
-                        fontSize = 11.sp,
-                        lineHeight = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (on) c.onAccent else c.textDim,
-                    )
-                }
+        BoxWithConstraints(Modifier.width(26.dp).fillMaxHeight()) {
+            // 16 dp a letter when there is room; on short screens the letters share the
+            // height, and below 12 dp each only every other letter is drawn (#, A, C … Y, Z).
+            // Touch still maps the whole A–Z over the full height (letterAt).
+            val shown = if (maxHeight >= LETTER_MIN * letters.size) letters
+            else letters.filterIndexed { i, _ -> i == 0 || i % 2 == 1 || i == letters.lastIndex }
+            AzLetters(shown, active)
+        }
+    }
+}
+
+private val LETTER_MAX = 16.dp
+private val LETTER_MIN = 12.dp
+
+@Composable
+private fun AzLetters(letters: List<Char>, active: Char?) {
+    val c = Fernplay.colors
+    Column(
+        Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        letters.forEach { letter ->
+            val on = letter == active
+            Box(
+                // Each letter gets its share of the height, at most 16 dp.
+                Modifier.width(24.dp).weight(1f, fill = false).heightIn(max = LETTER_MAX).fillMaxHeight()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (on) c.accent else c.background.copy(alpha = 0f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    letter.toString(),
+                    fontSize = 11.sp,
+                    lineHeight = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (on) c.onAccent else c.textDim,
+                )
             }
         }
     }
