@@ -3,7 +3,9 @@ package net.codekunde.fernplay.android.playback
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import androidx.annotation.OptIn
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -72,6 +74,7 @@ object SleepRules {
  * fades the volume over the last 30 s, pauses and puts the volume back; End of
  * song uses ExoPlayer's pause at the end of the item.
  */
+@OptIn(UnstableApi::class) // ExoPlayer.pauseAtEndOfMediaItems
 class SleepTimer(
     private val clock: () -> Long = SystemClock::elapsedRealtime,
     private val handler: Handler = Handler(Looper.getMainLooper()),
