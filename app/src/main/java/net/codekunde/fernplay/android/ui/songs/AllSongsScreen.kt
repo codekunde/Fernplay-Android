@@ -56,10 +56,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import net.codekunde.fernplay.android.R
+import net.codekunde.fernplay.android.data.PlaylistRules
+import net.codekunde.fernplay.android.library.Song
 import net.codekunde.fernplay.android.library.SongList
+import net.codekunde.fernplay.android.ui.components.ButtonKind
+import net.codekunde.fernplay.android.ui.components.FernButton
+import net.codekunde.fernplay.android.ui.components.FernSnackbarHost
+import net.codekunde.fernplay.android.ui.playlists.AddToPlaylistSheet
 import net.codekunde.fernplay.android.library.SongSort
 import net.codekunde.fernplay.android.playback.PlayerConnection
 import net.codekunde.fernplay.android.ui.LibraryViewModel
@@ -70,15 +91,41 @@ import net.codekunde.fernplay.android.ui.components.SongRow
 import net.codekunde.fernplay.android.ui.theme.Fernplay
 import java.text.NumberFormat
 
+/**
+ * Every song in the library. Long-press starts selecting (Add to playlist,
+ * Queue). With [addTo] set (a playlist's "Add songs"), it opens in selection
+ * mode and adds the ticked songs to that playlist.
+ */
 @Composable
-fun AllSongsScreen(vm: LibraryViewModel, player: PlayerConnection, onBack: () -> Unit) {
+fun AllSongsScreen(vm: LibraryViewModel, player: PlayerConnection, onBack: () -> Unit, addTo: Long? = null) {
     val c = Fernplay.colors
     val view by vm.songList.collectAsStateWithLifecycle()
     val total by vm.librarySongs.collectAsStateWithLifecycle()
     val query by vm.query.collectAsStateWithLifecycle()
     val sort by vm.sort.collectAsStateWithLifecycle()
+    val selected by vm.selected.collectAsStateWithLifecycle()
     val playingId by player.currentMediaId
     val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val snackbar = remember { SnackbarHostState() }
+    var sheetFor by remember { mutableStateOf<List<Song>?>(null) }
+    val target by remember(addTo) { addTo?.let { vm.playlists.view(it) } ?: flowOf(null) }.collectAsStateWithLifecycle(null)
+
+    // "Add songs" from a playlist starts with ticks; leaving the screen always ends selecting.
+    DisposableEffect(addTo) {
+        if (addTo != null) vm.startSelection()
+        onDispose { vm.endSelection() }
+    }
+    BackHandler(enabled = selected != null && addTo == null) { vm.endSelection() }
+
+    fun selectedSongs(): List<Song> {
+        val ids = selected.orEmpty()
+        return SongList.sorted(total.orEmpty().filter { it.id in ids }, sort)
+    }
+    fun note(text: String) = scope.launch {
+        snackbar.currentSnackbarData?.dismiss()
+        snackbar.showSnackbar(text)
+    }
     // A new sort or search starts at the top, not at whichever song was on top before.
     // Coming back to this screen keeps the place.
     var shownFor by rememberSaveable { mutableStateOf("$sort|$query") }
@@ -90,16 +137,27 @@ fun AllSongsScreen(vm: LibraryViewModel, player: PlayerConnection, onBack: () ->
         }
     }
 
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        FernTopBar(title = "All songs", onBack = onBack) {
-            total?.let {
-                Text(
-                    NumberFormat.getIntegerInstance().format(it.size),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = c.textDim,
-                    modifier = Modifier.padding(end = 12.dp).semantics { contentDescription = "${it.size} songs" },
-                )
+        val sel = selected
+        if (sel == null) {
+            FernTopBar(title = "All songs", onBack = onBack) {
+                total?.let {
+                    Text(
+                        NumberFormat.getIntegerInstance().format(it.size),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = c.textDim,
+                        modifier = Modifier.padding(end = 12.dp).semantics { contentDescription = "${it.size} songs" },
+                    )
+                }
             }
+        } else {
+            SelectionBar(
+                count = sel.size,
+                title = target?.let { "Add to ${it.name}" },
+                onCancel = { if (addTo != null) onBack() else vm.endSelection() },
+                onSelectAll = { vm.selectAll(view?.songs.orEmpty().map { it.id }) },
+            )
         }
         SearchField(query, onChange = { vm.query.value = it })
         SortChips(sort, onSort = { vm.sort.value = it })
@@ -122,10 +180,105 @@ fun AllSongsScreen(vm: LibraryViewModel, player: PlayerConnection, onBack: () ->
                 ) {
                     OutlinedButton(onClick = { vm.query.value = "" }) { Text("Clear search") }
                 }
-                else -> SongListWithStrip(listState, v.songs, v.letters, sort, playingId) { index -> player.play(v.songs, index, queueName = "All songs") }
+                else -> SongListWithStrip(
+                    listState, v.songs, v.letters, sort, playingId,
+                    selected = sel,
+                    onPlay = { index -> player.play(v.songs, index, queueName = "All songs") },
+                    onToggle = { id -> vm.toggleSelected(id, keepEmpty = addTo != null) },
+                    onLongPress = { id -> if (sel == null) vm.startSelection(id) else vm.toggleSelected(id, keepEmpty = addTo != null) },
+                )
+            }
+        }
+
+        if (sel != null) {
+            SelectionActions {
+                val n = sel.size
+                if (addTo != null) {
+                    FernButton(
+                        if (n == 0) "Tick songs to add" else "Add ${PlaylistRules.songCount(n)}",
+                        {
+                            scope.launch {
+                                vm.playlists.add(addTo, selectedSongs())
+                                onBack()
+                            }
+                        },
+                        Modifier.weight(1f),
+                        icon = R.drawable.ic_playlist_add,
+                        enabled = n > 0,
+                    )
+                } else {
+                    FernButton("Add to playlist", { sheetFor = selectedSongs() }, Modifier.weight(1f), icon = R.drawable.ic_playlist_add, enabled = n > 0)
+                    FernButton(
+                        "Queue",
+                        {
+                            val songs = selectedSongs()
+                            player.playNext(songs, "All songs")
+                            vm.endSelection()
+                            note(if (songs.size == 1) "Plays next" else "${songs.size} songs play next")
+                        },
+                        icon = R.drawable.ic_queue,
+                        kind = ButtonKind.Secondary,
+                        enabled = n > 0,
+                    )
+                }
             }
         }
     }
+    FernSnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = if (selected != null) 88.dp else 0.dp))
+    }
+
+    sheetFor?.let { songs ->
+        AddToPlaylistSheet(
+            vm.playlists,
+            songs,
+            onDismiss = { sheetFor = null },
+            onDone = { message ->
+                sheetFor = null
+                vm.endSelection()
+                note(message)
+            },
+        )
+    }
+}
+
+/** Replaces the top bar while selecting: Cancel, how many, Select all. */
+@Composable
+private fun SelectionBar(count: Int, title: String?, onCancel: () -> Unit, onSelectAll: () -> Unit) {
+    val c = Fernplay.colors
+    Row(
+        Modifier.fillMaxWidth().height(64.dp).background(c.accentContainer).padding(start = 4.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FernIconButton(R.drawable.ic_close, "Cancel selection", onCancel, tint = c.onAccentContainer)
+        Column(Modifier.weight(1f).padding(start = 4.dp)) {
+            if (title != null) {
+                Text(title, style = MaterialTheme.typography.bodyMedium, color = c.onAccentContainer, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Text(
+                "$count selected",
+                style = MaterialTheme.typography.headlineSmall.let { if (title != null) it.copy(fontSize = 18.sp, lineHeight = 22.sp) else it },
+                color = c.onAccentContainer,
+                modifier = Modifier.semantics { heading(); liveRegion = LiveRegionMode.Polite },
+            )
+        }
+        FernIconButton(R.drawable.ic_check, "Select all", onSelectAll, tint = c.onAccentContainer)
+    }
+}
+
+/** Bottom bar while selecting. */
+@Composable
+private fun SelectionActions(content: @Composable RowScope.() -> Unit) {
+    val c = Fernplay.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .shadow(8.dp, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+            .background(c.surface)
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        content = content,
+    )
 }
 
 @Composable
@@ -206,7 +359,10 @@ private fun SongListWithStrip(
     letters: Map<Char, Int>,
     sort: SongSort,
     playingId: String?,
+    selected: Set<Long>?,
     onPlay: (Int) -> Unit,
+    onToggle: (Long) -> Unit,
+    onLongPress: (Long) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val showStrip = letters.isNotEmpty() && songs.size > 1
@@ -218,12 +374,22 @@ private fun SongListWithStrip(
     Box(Modifier.fillMaxSize()) {
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             itemsIndexed(songs, key = { _, s -> s.id }) { index, song ->
-                SongRow(
-                    song = song,
-                    playing = song.id.toString() == playingId,
-                    onClick = { onPlay(index) },
-                    endPadding = if (showStrip) 34.dp else 16.dp,
-                )
+                if (selected != null) {
+                    SelectableSongRow(
+                        song,
+                        checked = song.id in selected,
+                        onToggle = { onToggle(song.id) },
+                        endPadding = if (showStrip) 34.dp else 16.dp,
+                    )
+                } else {
+                    SongRow(
+                        song = song,
+                        playing = song.id.toString() == playingId,
+                        onClick = { onPlay(index) },
+                        endPadding = if (showStrip) 34.dp else 16.dp,
+                        onLongClick = { onLongPress(song.id) },
+                    )
+                }
             }
         }
         if (showStrip) {
@@ -231,6 +397,45 @@ private fun SongListWithStrip(
                 active = activeLetter,
                 modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight().padding(vertical = 4.dp),
                 onLetter = { letter -> letters[letter]?.let { scope.launch { listState.scrollToItem(it) } } },
+            )
+        }
+    }
+}
+
+/** A song while selecting: a round tick in place of the art; the whole row toggles. */
+@Composable
+private fun SelectableSongRow(song: Song, checked: Boolean, onToggle: () -> Unit, endPadding: androidx.compose.ui.unit.Dp) {
+    val c = Fernplay.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .background(if (checked) c.selected else c.background.copy(alpha = 0f))
+            .toggleable(value = checked, role = Role.Checkbox, onValueChange = { onToggle() })
+            .padding(start = 16.dp, end = endPadding, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(if (checked) c.accent else c.background.copy(alpha = 0f))
+                    .border(2.dp, if (checked) c.accent else c.textDim, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (checked) Icon(painterResource(R.drawable.ic_check), contentDescription = null, tint = c.onAccent, modifier = Modifier.size(18.dp))
+            }
+        }
+        Column(Modifier.weight(1f)) {
+            Text(song.title, style = MaterialTheme.typography.bodyLarge, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                "${song.artist} · ${SongList.duration(song.durationMs)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = c.textDim,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

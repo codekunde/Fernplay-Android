@@ -1,8 +1,10 @@
 package net.codekunde.fernplay.android.ui.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -113,14 +115,26 @@ fun ArtTile(seed: Long, size: Dp = 48.dp, @DrawableRes icon: Int = R.drawable.ic
  * A song: art, title, "artist · length". The loaded song shows level bars on its
  * tile and a coloured, heavier title (the bars carry it without colour).
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun SongRow(song: Song, playing: Boolean, onClick: () -> Unit, endPadding: Dp = 16.dp) {
+fun SongRow(
+    song: Song,
+    playing: Boolean,
+    onClick: () -> Unit,
+    endPadding: Dp = 16.dp,
+    onLongClick: (() -> Unit)? = null,
+) {
     val c = Fernplay.colors
     Row(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 64.dp)
-            .clickable(onClickLabel = "Play", onClick = onClick)
+            .combinedClickable(
+                onClickLabel = "Play",
+                onClick = onClick,
+                onLongClickLabel = if (onLongClick != null) "Select" else null,
+                onLongClick = onLongClick,
+            )
             .then(if (playing) Modifier.semantics { stateDescription = "Now playing" } else Modifier)
             .padding(start = 16.dp, end = endPadding, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,

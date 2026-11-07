@@ -27,6 +27,9 @@ import net.codekunde.fernplay.android.ui.home.HomeScreen
 import net.codekunde.fernplay.android.ui.player.GymScreen
 import net.codekunde.fernplay.android.ui.player.MiniPlayer
 import net.codekunde.fernplay.android.ui.player.NowPlayingScreen
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import net.codekunde.fernplay.android.ui.playlists.PlaylistScreen
 import net.codekunde.fernplay.android.ui.songs.AllSongsScreen
 import net.codekunde.fernplay.android.ui.theme.Fernplay
 
@@ -37,6 +40,12 @@ object Routes {
     const val SETTINGS = "settings"
     const val NOW_PLAYING = "now-playing"
     const val GYM = "gym"
+    const val PLAYLIST = "playlist/{id}"
+    /** All songs opened from a playlist's "Add songs". */
+    const val ADD_SONGS = "add-songs/{playlistId}"
+
+    fun playlist(id: Long) = "playlist/$id"
+    fun addSongs(playlistId: Long) = "add-songs/$playlistId"
 }
 
 @Composable
@@ -45,6 +54,7 @@ fun FernplayApp(vm: LibraryViewModel, player: PlayerConnection, nav: NavHostCont
     val settings by vm.settings.collectAsStateWithLifecycle()
     val entry by nav.currentBackStackEntryAsState()
     val now by player.now
+    val selecting by vm.selected.collectAsStateWithLifecycle()
     val openPlayer = { nav.navigate(Routes.NOW_PLAYING) { launchSingleTop = true } }
     Column(Modifier.fillMaxSize().background(c.background).safeDrawingPadding()) {
         val s = settings ?: return@Column // settings are read in a few milliseconds
@@ -63,11 +73,26 @@ fun FernplayApp(vm: LibraryViewModel, player: PlayerConnection, nav: NavHostCont
                     vm,
                     player,
                     onAllSongs = { nav.navigate(Routes.ALL_SONGS) },
+                    onPlaylist = { id -> nav.navigate(Routes.playlist(id)) { launchSingleTop = true } },
                     onSettings = { nav.navigate(Routes.SETTINGS) },
                     onChooseFolders = { nav.navigate(Routes.FIRST_RUN) },
                 )
             }
             composable(Routes.ALL_SONGS) { AllSongsScreen(vm, player, onBack = { nav.popBackStack() }) }
+            composable(Routes.PLAYLIST, arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
+                val id = e.arguments?.getLong("id") ?: return@composable
+                PlaylistScreen(
+                    vm,
+                    player,
+                    id,
+                    onBack = { nav.popBackStack() },
+                    onAddSongs = { nav.navigate(Routes.addSongs(id)) { launchSingleTop = true } },
+                )
+            }
+            composable(Routes.ADD_SONGS, arguments = listOf(navArgument("playlistId") { type = NavType.LongType })) { e ->
+                val id = e.arguments?.getLong("playlistId") ?: return@composable
+                AllSongsScreen(vm, player, onBack = { nav.popBackStack() }, addTo = id)
+            }
             composable(Routes.SETTINGS) { NotBuiltYet("Settings", onBack = { nav.popBackStack() }) }
             composable(Routes.NOW_PLAYING) {
                 NowPlayingScreen(
@@ -78,12 +103,13 @@ fun FernplayApp(vm: LibraryViewModel, player: PlayerConnection, nav: NavHostCont
             }
             composable(Routes.GYM) { GymScreen(player, onClose = { nav.popBackStack() }) }
         }
-        if (now != null && entry?.destination?.route in MINI_PLAYER_ROUTES) MiniPlayer(player, onOpen = openPlayer)
+        // While selecting songs the bottom belongs to the selection's buttons.
+        if (now != null && selecting == null && entry?.destination?.route in MINI_PLAYER_ROUTES) MiniPlayer(player, onOpen = openPlayer)
     }
 }
 
 /** Screens that show the mini player when something is queued. */
-private val MINI_PLAYER_ROUTES = setOf(Routes.HOME, Routes.ALL_SONGS)
+private val MINI_PLAYER_ROUTES = setOf(Routes.HOME, Routes.ALL_SONGS, Routes.PLAYLIST)
 
 @Composable
 private fun NotBuiltYet(title: String, onBack: () -> Unit) {

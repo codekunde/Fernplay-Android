@@ -69,6 +69,38 @@ interface PlaylistDao {
     @Query("SELECT * FROM playlist_entry WHERE playlistId = :playlistId ORDER BY position")
     fun entries(playlistId: Long): Flow<List<PlaylistEntryEntity>>
 
+    @Query("SELECT * FROM playlist_entry WHERE playlistId = :playlistId ORDER BY position")
+    suspend fun entriesNow(playlistId: Long): List<PlaylistEntryEntity>
+
+    /** Every entry, for the add sheet's "already in" line. */
+    @Query("SELECT * FROM playlist_entry")
+    fun allEntries(): Flow<List<PlaylistEntryEntity>>
+
+    @Query("SELECT * FROM playlist WHERE id = :id")
+    fun playlist(id: Long): Flow<PlaylistEntity?>
+
+    @Query("SELECT name FROM playlist")
+    suspend fun names(): List<String>
+
+    @Query("DELETE FROM playlist_entry WHERE playlistId = :playlistId")
+    suspend fun clearEntries(playlistId: Long)
+
+    /** Points an entry at the song's new id after the music index re-numbered or moved it. */
+    @Query(
+        """
+        UPDATE playlist_entry SET mediaId = :mediaId, folder = :folder
+        WHERE playlistId = :playlistId AND position = :position
+        """
+    )
+    suspend fun repoint(playlistId: Long, position: Int, mediaId: Long, folder: String)
+
+    /** Replaces the whole list: used for reorder, remove and undo, so positions stay 0..n-1. */
+    @Transaction
+    suspend fun replaceEntries(playlistId: Long, entries: List<PlaylistEntryEntity>) {
+        clearEntries(playlistId)
+        insertEntries(PlaylistRules.renumber(entries, playlistId))
+    }
+
     @Insert
     suspend fun insertPlaylist(playlist: PlaylistEntity): Long
 

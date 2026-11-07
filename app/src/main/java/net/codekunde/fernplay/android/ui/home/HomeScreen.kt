@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -15,22 +17,32 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import net.codekunde.fernplay.android.R
 import net.codekunde.fernplay.android.library.SongList
 import net.codekunde.fernplay.android.playback.PlayerConnection
-import net.codekunde.fernplay.android.ui.player.ContinueCard
 import net.codekunde.fernplay.android.ui.LibraryViewModel
 import net.codekunde.fernplay.android.ui.components.EmptyState
 import net.codekunde.fernplay.android.ui.components.FernIconButton
 import net.codekunde.fernplay.android.ui.components.FernTopBar
 import net.codekunde.fernplay.android.ui.components.NavRow
 import net.codekunde.fernplay.android.ui.components.SectionLabel
+import net.codekunde.fernplay.android.ui.player.ContinueCard
+import net.codekunde.fernplay.android.ui.playlists.NewPlaylistDialog
+import net.codekunde.fernplay.android.ui.playlists.NewPlaylistRow
+import net.codekunde.fernplay.android.ui.playlists.PlaylistRow
 import net.codekunde.fernplay.android.ui.theme.Fernplay
 import java.text.NumberFormat
 
@@ -39,6 +51,7 @@ fun HomeScreen(
     vm: LibraryViewModel,
     player: PlayerConnection,
     onAllSongs: () -> Unit,
+    onPlaylist: (Long) -> Unit,
     onSettings: () -> Unit,
     onChooseFolders: () -> Unit,
 ) {
@@ -46,6 +59,10 @@ fun HomeScreen(
     val settings by vm.settings.collectAsStateWithLifecycle()
     val songs by vm.librarySongs.collectAsStateWithLifecycle()
     val granted by vm.hasPermission.collectAsStateWithLifecycle()
+    val playlists by vm.playlists.summaries.collectAsStateWithLifecycle()
+    val now by player.now
+    val scope = rememberCoroutineScope()
+    var creating by rememberSaveable { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize()) {
         FernTopBar(title = "Fernplay", showFern = true) {
@@ -72,35 +89,64 @@ fun HomeScreen(
                     Text(if (granted) "Choose folders" else "Allow access")
                 }
             }
-            else -> Column(Modifier.weight(1f)) {
-                ContinueCard(player)
-                val list = songs
-                NavRow(
-                    title = "All songs",
-                    subtitle = when {
-                        list == null -> "Reading your music…"
-                        list.isEmpty() -> "No songs in your folders yet"
-                        else -> "${count(list.size)} · ${SongList.totalLength(list.sumOf { it.durationMs })}"
-                    },
-                    onClick = onAllSongs,
-                    leading = {
-                        Box(
-                            Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)).background(c.accentContainer),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(painterResource(R.drawable.ic_music), contentDescription = null, tint = c.onAccentContainer)
-                        }
-                    },
-                )
-                SectionLabel("Playlists")
-                Text(
-                    "No playlists yet.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = c.textDim,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
+            else -> LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
+                item(key = "continue") { ContinueCard(player) }
+                item(key = "all") {
+                    val list = songs
+                    NavRow(
+                        title = "All songs",
+                        subtitle = when {
+                            list == null -> "Reading your music…"
+                            list.isEmpty() -> "No songs in your folders yet"
+                            else -> "${count(list.size)} · ${SongList.totalLength(list.sumOf { it.durationMs })}"
+                        },
+                        onClick = onAllSongs,
+                        leading = {
+                            Box(
+                                Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)).background(c.accentContainer),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(painterResource(R.drawable.ic_music), contentDescription = null, tint = c.onAccentContainer)
+                            }
+                        },
+                    )
+                }
+                item(key = "label") { SectionLabel("Playlists") }
+                val list = playlists
+                if (list != null && list.isEmpty()) {
+                    item(key = "none") {
+                        Text(
+                            "No playlists yet.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = c.textDim,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        )
+                    }
+                }
+                items(list.orEmpty(), key = { "p${it.id}" }) { p ->
+                    PlaylistRow(
+                        p,
+                        // Names are unique, so the queue's name tells which playlist is playing.
+                        playing = now?.queueName == p.name,
+                        onOpen = { onPlaylist(p.id) },
+                        onPlay = {
+                            scope.launch {
+                                val view = vm.playlists.view(p.id).filterNotNull().first()
+                                player.play(view.songs, 0, view.name)
+                            }
+                        },
+                    )
+                }
+                item(key = "new") { NewPlaylistRow { creating = true } }
             }
         }
+    }
+    if (creating) {
+        NewPlaylistDialog(
+            vm.playlists,
+            onDismiss = { creating = false },
+            onCreated = { id -> creating = false; onPlaylist(id) },
+        )
     }
 }
 

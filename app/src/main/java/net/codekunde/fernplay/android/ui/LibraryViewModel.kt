@@ -19,7 +19,10 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import net.codekunde.fernplay.android.data.FernplayDatabase
+import net.codekunde.fernplay.android.data.PlaylistStore
 import net.codekunde.fernplay.android.library.LibraryRepository
+import net.codekunde.fernplay.android.library.Rescan
 import net.codekunde.fernplay.android.library.MusicFolder
 import net.codekunde.fernplay.android.library.MusicFolders
 import net.codekunde.fernplay.android.library.Song
@@ -111,5 +114,36 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setTheme(theme: ThemeChoice) {
         viewModelScope.launch { store.setTheme(theme) }
+    }
+
+    /** Playlists, matched against every song on the phone so moved files are found. */
+    val playlists = PlaylistStore(FernplayDatabase.get(app).playlists(), viewModelScope, allSongs)
+
+    // Multi-select in All songs (long-press, or "Add songs" from a playlist).
+    private val _selected = MutableStateFlow<Set<Long>?>(null)
+    /** Ticked song ids while selecting; null when not selecting. */
+    val selected: StateFlow<Set<Long>?> = _selected
+
+    fun startSelection(first: Long? = null) {
+        _selected.value = setOfNotNull(first)
+    }
+
+    /** Ticks or unticks a song. Unticking the last one ends a long-press selection, unless [keepEmpty]. */
+    fun toggleSelected(id: Long, keepEmpty: Boolean) {
+        val now = _selected.value ?: return
+        val next = if (id in now) now - id else now + id
+        _selected.value = if (next.isEmpty() && !keepEmpty) null else next
+    }
+
+    fun selectAll(ids: Collection<Long>) {
+        if (_selected.value != null) _selected.value = ids.toSet()
+    }
+
+    fun endSelection() {
+        _selected.value = null
+    }
+
+    fun rescan(done: () -> Unit) {
+        Rescan.folders(getApplication(), settings.value?.folders.orEmpty(), done)
     }
 }

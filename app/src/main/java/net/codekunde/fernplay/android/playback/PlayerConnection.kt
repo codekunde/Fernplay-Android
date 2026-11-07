@@ -123,10 +123,24 @@ class PlayerConnection(private val context: Context) {
         if (songs.isEmpty()) return
         val items = songs.map(MediaItems::of)
         withController { c ->
+            // Shuffle is done by ordering the list, so "7 / 24" and resume follow what is heard.
+            c.shuffleModeEnabled = false
             c.playlistMetadata = MediaItems.queueName(queueName)
             c.setMediaItems(items, index.coerceIn(0, items.lastIndex), 0L)
             c.prepare()
             c.play()
+        }
+    }
+
+    /** Puts [songs] right after the current song; with nothing queued they become the queue. */
+    fun playNext(songs: List<Song>, queueName: String) {
+        if (songs.isEmpty()) return
+        withController { c ->
+            if (c.mediaItemCount == 0) {
+                play(songs, 0, queueName)
+                return@withController
+            }
+            c.addMediaItems(c.currentMediaItemIndex + 1, songs.map(MediaItems::of))
         }
     }
 
