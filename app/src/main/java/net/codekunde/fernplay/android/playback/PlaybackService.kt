@@ -21,6 +21,8 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import net.codekunde.fernplay.android.eq.EqRenderersFactory
+import net.codekunde.fernplay.android.eq.EqualizerState
 
 /**
  * Plays music in the background and owns the media session: notification, lock
@@ -53,7 +55,8 @@ class PlaybackService : MediaSessionService() {
         setMediaNotificationProvider(FernplayNotificationProvider(this))
         store = ResumeStore(filesDir)
 
-        val engine = ExoPlayer.Builder(this)
+        val eq = EqualizerState.get(this)
+        val engine = ExoPlayer.Builder(this, EqRenderersFactory(this) { eq.settings.value })
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)

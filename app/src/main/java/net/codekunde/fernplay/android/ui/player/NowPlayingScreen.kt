@@ -44,7 +44,7 @@ import net.codekunde.fernplay.android.ui.theme.LcdText
 
 /** Full-screen player: art, LCD, seek, transport, Repeat. Controls sit in thumb reach. */
 @Composable
-fun NowPlayingScreen(player: PlayerConnection, onClose: () -> Unit, onGym: () -> Unit, onQueue: () -> Unit) {
+fun NowPlayingScreen(player: PlayerConnection, onClose: () -> Unit, onGym: () -> Unit, onQueue: () -> Unit, onEqualizer: () -> Unit) {
     val c = Fernplay.colors
     val now by player.now
     val position by player.position
@@ -106,7 +106,8 @@ fun NowPlayingScreen(player: PlayerConnection, onClose: () -> Unit, onGym: () ->
             // XFADE (v2) joins this row later.
             Row(Modifier.padding(horizontal = 16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 RepeatToggle(n.repeat, player::cycleRepeat, Modifier.weight(1f))
-                LabelButton(R.drawable.ic_queue, "Queue", onQueue, Modifier.weight(1f))
+                LabelButton(R.drawable.ic_queue, "Queue", onQueue, Modifier.width(88.dp))
+                LabelButton(R.drawable.ic_eq, "EQ", onEqualizer, Modifier.width(88.dp))
             }
             Spacer(Modifier.weight(1f))
         }

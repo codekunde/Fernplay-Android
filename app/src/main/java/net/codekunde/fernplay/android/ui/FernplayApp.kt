@@ -22,6 +22,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import net.codekunde.fernplay.android.playback.PlayerConnection
 import net.codekunde.fernplay.android.ui.components.FernTopBar
+import net.codekunde.fernplay.android.ui.eq.EqualizerScreen
 import net.codekunde.fernplay.android.ui.firstrun.FirstRunScreen
 import net.codekunde.fernplay.android.ui.home.HomeScreen
 import net.codekunde.fernplay.android.ui.player.GymScreen
@@ -42,6 +43,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val NOW_PLAYING = "now-playing"
     const val GYM = "gym"
+    const val EQUALIZER = "equalizer"
     const val PLAYLIST = "playlist/{id}"
     /** All songs opened from a playlist's "Add songs". */
     const val ADD_SONGS = "add-songs/{playlistId}"
@@ -106,8 +108,10 @@ fun FernplayApp(vm: LibraryViewModel, player: PlayerConnection, nav: NavHostCont
                     onClose = { nav.popBackStack() },
                     onGym = { nav.navigate(Routes.GYM) { launchSingleTop = true } },
                     onQueue = { nav.navigate(Routes.queue(editable = true)) { launchSingleTop = true } },
+                    onEqualizer = { nav.navigate(Routes.EQUALIZER) { launchSingleTop = true } },
                 )
             }
+            composable(Routes.EQUALIZER) { EqualizerScreen(onBack = { nav.popBackStack() }) }
             composable(Routes.GYM) {
                 GymScreen(
                     player,
