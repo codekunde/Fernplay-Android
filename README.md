@@ -10,7 +10,7 @@ It can also be the remote for Fernplay on your PC: pair once with a 6-digit code
 
 It is the Android sibling of [Fernplay](https://github.com/codekunde/Fernplay) for Windows and shares its look: a dark frame, a green LCD-style display and a fern.
 
-**Status:** 0.2.0 adds the equalizer and a sleep timer. Download `fernplay-0.2.0.apk` from the Releases page and open it on your phone (Android asks once to allow installs from that app); it installs over 0.1.0 and keeps your playlists.
+**Status:** 0.3.0 adds the remote for Fernplay on your PC. Download `fernplay-0.3.0.apk` from the Releases page and open it on your phone (Android asks once to allow installs from that app); it installs over 0.2.0 and keeps your playlists.
 
 ## Requirements
 
