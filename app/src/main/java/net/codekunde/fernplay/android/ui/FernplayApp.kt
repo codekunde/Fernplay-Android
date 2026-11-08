@@ -29,6 +29,7 @@ import net.codekunde.fernplay.android.ui.player.GymScreen
 import net.codekunde.fernplay.android.ui.player.MiniPlayer
 import net.codekunde.fernplay.android.ui.player.NowPlayingScreen
 import net.codekunde.fernplay.android.ui.player.QueueScreen
+import net.codekunde.fernplay.android.ui.remote.RemoteScreen
 import net.codekunde.fernplay.android.ui.settings.SettingsScreen
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
@@ -44,6 +45,8 @@ object Routes {
     const val NOW_PLAYING = "now-playing"
     const val GYM = "gym"
     const val EQUALIZER = "equalizer"
+    /** Fernplay on the PC: pairing and the phone remote. */
+    const val REMOTE = "remote"
     const val PLAYLIST = "playlist/{id}"
     /** All songs opened from a playlist's "Add songs". */
     const val ADD_SONGS = "add-songs/{playlistId}"
@@ -84,8 +87,10 @@ fun FernplayApp(vm: LibraryViewModel, player: PlayerConnection, nav: NavHostCont
                     onPlaylist = { id -> nav.navigate(Routes.playlist(id)) { launchSingleTop = true } },
                     onSettings = { nav.navigate(Routes.SETTINGS) },
                     onChooseFolders = { nav.navigate(Routes.FIRST_RUN) },
+                    onRemote = { nav.navigate(Routes.REMOTE) { launchSingleTop = true } },
                 )
             }
+            composable(Routes.REMOTE) { RemoteScreen(onBack = { nav.popBackStack() }) }
             composable(Routes.ALL_SONGS) { AllSongsScreen(vm, player, onBack = { nav.popBackStack() }) }
             composable(Routes.PLAYLIST, arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 val id = e.arguments?.getLong("id") ?: return@composable

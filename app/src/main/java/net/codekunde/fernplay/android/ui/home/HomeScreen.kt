@@ -48,6 +48,7 @@ import net.codekunde.fernplay.android.ui.components.FernTopBar
 import net.codekunde.fernplay.android.ui.components.NavRow
 import net.codekunde.fernplay.android.ui.components.SectionLabel
 import net.codekunde.fernplay.android.ui.player.ContinueCard
+import net.codekunde.fernplay.android.ui.remote.PcTile
 import net.codekunde.fernplay.android.ui.playlists.NewPlaylistDialog
 import net.codekunde.fernplay.android.ui.playlists.NewPlaylistRow
 import net.codekunde.fernplay.android.ui.playlists.PlaylistRow
@@ -62,6 +63,7 @@ fun HomeScreen(
     onPlaylist: (Long) -> Unit,
     onSettings: () -> Unit,
     onChooseFolders: () -> Unit,
+    onRemote: () -> Unit,
 ) {
     val c = Fernplay.colors
     val settings by vm.settings.collectAsStateWithLifecycle()
@@ -135,6 +137,14 @@ fun HomeScreen(
                                 Icon(painterResource(R.drawable.ic_music), contentDescription = null, tint = c.onAccentContainer)
                             }
                         },
+                    )
+                }
+                item(key = "remote") {
+                    NavRow(
+                        title = "Fernplay on your PC",
+                        subtitle = "Control the PC's player from here",
+                        onClick = onRemote,
+                        leading = { PcTile() },
                     )
                 }
                 item(key = "label") { SectionLabel("Playlists") }

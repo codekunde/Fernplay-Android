@@ -9,4 +9,4 @@ Licensed under the SIL Open Font License, Version 1.1: [licenses/OFL-ShareTechMo
 
 ## Libraries
 
-The app is built with AndroidX (Jetpack Compose, Media3, Room, Navigation, DataStore) and Kotlin coroutines, all under the Apache License 2.0. The Repeat icons are based on Material Design icons, also Apache License 2.0.
+The app is built with AndroidX (Jetpack Compose, Media3, Room, Navigation, DataStore) and Kotlin coroutines, all under the Apache License 2.0. The Repeat, PC, Stop and Volume icons are based on Material Design icons, also Apache License 2.0.

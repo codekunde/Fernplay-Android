@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Remote for Fernplay on your PC: Home → Fernplay on your PC. On the PC, switch PHONE REMOTE on in Settings and choose PAIR A PHONE…; the phone finds the PC on the Wi-Fi (or takes its address) and asks once for the 6-digit code. Then the phone shows what the PC plays and controls it: play, pause, stop, previous, next, seek, volume, Shuffle, Repeat and Crossfade, and the PC's playlist (tap a row to play it). The phone's own music is not touched. It works on your home network only, encrypted, and only with the PC you paired; the connection ends when Fernplay goes to the background. Needs the Fernplay for Windows release that adds the phone remote.
+- Fernplay now has network access, used only by the remote to talk to your PC.
+
 ## 0.2.0 (2026-11-08)
 
 Android 8.0 or later. Installs over 0.1.0 and keeps your playlists and folders.
