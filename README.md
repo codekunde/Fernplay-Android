@@ -3,10 +3,8 @@
 A simple music player for Android: open it, pick a track or a playlist, play.
 
 <p>
-  <img src="docs/screenshots/first-run.png" width="200" alt="First run: the music folders found on the phone, with song counts, and a Scan 17 songs button">
-  <img src="docs/screenshots/home.png" width="200" alt="Home in the light theme: All songs, Fernplay on your PC, and three playlists with a play button each">
-  <img src="docs/screenshots/now-playing.png" width="200" alt="Now Playing in the dark theme: a green LCD with title, artist and time, seek bar, transport buttons, Repeat List, Queue and EQ">
-  <img src="docs/screenshots/equalizer.png" width="200" alt="Equalizer in the dark theme: the Dance preset, its curve on the LCD, and the preamp and ten band sliders">
+  <img src="docs/screenshots/home.png" width="160" alt="Home in the light theme: All songs, Fernplay on your PC, and three playlists with a play button each">
+  <img src="docs/screenshots/now-playing.png" width="160" alt="Now Playing in the dark theme: a green LCD with title, artist and time, seek bar, transport buttons, Repeat List, Queue and EQ">
 </p>
 
 Fernplay plays the music already on your phone. You pick your music folders once and new songs appear by themselves. Playlists live inside the app, all on the home screen, never as files in folders. Repeat is always one tap away, on the player and in the notification, and the lock screen, headset, Bluetooth and car buttons all control playback.
