@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Fernplay for Android">
+  <!-- Fernplay's desktop app icon (charcoal tile, EQ bars) with the Android launcher's fern in place of the play triangle. -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4A4F62"/>
+      <stop offset="1" stop-color="#1E2029"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="17" fill="url(#tile)" stroke="#8A90A3" stroke-opacity="0.78" stroke-width="1.6"/>
+  <!-- Fern: same shapes as the desktop mark (docs/fernplay.svg in Fernplay) and ic_launcher_foreground.xml. -->
+  <g transform="translate(4.4 12.4) scale(2.4)">
+    <path d="M6.5,15.5 Q7,8 11,0.8" fill="none" stroke="#8CD678" stroke-width="0.8" stroke-linecap="round"/>
+    <path fill="#6FBF5E" d="M6.9,13 L2.5,12 L6.8,11.3 Z M7.1,12.6 L11.6,10.6 L7.4,11.2 Z M7.2,10 L3.4,8.4 L7.4,8.6 Z M7.6,9.6 L11.8,7.2 L8,8.2 Z M8.1,6.9 L5,5.2 L8.4,5.6 Z M8.7,6.4 L12,3.9 L9,5.2 Z M9.6,3.9 L7.5,2.3 L9.9,3 Z"/>
+  </g>
+  <!-- EQ bars, bottom on the fern's foot, coloured like the desktop skin's band sliders. -->
+  <rect x="37.2" y="36.85" width="4.2" height="12.8" fill="#5FBE52"/>
+  <rect x="43.3" y="27.85" width="4.2" height="21.8" fill="#E3CF4A"/>
+  <rect x="49.4" y="33.05" width="4.2" height="16.6" fill="#EC9234"/>
+</svg>

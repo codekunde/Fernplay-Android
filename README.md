@@ -1,6 +1,13 @@
-# Fernplay for Android
+# <img src="docs/fernplay-android.svg" width="32" height="32" alt=""> Fernplay for Android
 
 A simple music player for Android: open it, pick a track or a playlist, play.
+
+<p>
+  <img src="docs/screenshots/first-run.png" width="200" alt="First run: the music folders found on the phone, with song counts, and a Scan 17 songs button">
+  <img src="docs/screenshots/home.png" width="200" alt="Home in the light theme: All songs, Fernplay on your PC, and three playlists with a play button each">
+  <img src="docs/screenshots/now-playing.png" width="200" alt="Now Playing in the dark theme: a green LCD with title, artist and time, seek bar, transport buttons, Repeat List, Queue and EQ">
+  <img src="docs/screenshots/equalizer.png" width="200" alt="Equalizer in the dark theme: the Dance preset, its curve on the LCD, and the preamp and ten band sliders">
+</p>
 
 Fernplay plays the music already on your phone. You pick your music folders once and new songs appear by themselves. Playlists live inside the app, all on the home screen, never as files in folders. Repeat is always one tap away, on the player and in the notification, and the lock screen, headset, Bluetooth and car buttons all control playback.
 
@@ -15,6 +22,10 @@ It is the Android sibling of [Fernplay](https://github.com/codekunde/Fernplay) f
 ## Requirements
 
 Android 8.0 or later.
+
+## Pairing with your PC
+
+Phone and PC talk over TLS. When you pair, the phone remembers the PC's certificate and gets a key of its own, and every later connection proves both. One known limit: the 6-digit code is not protected by a password-authenticated key exchange (PAKE). Someone already intercepting traffic on your Wi-Fi during the two minutes the code is shown could work out the code and pair in place of your phone. They would get what the remote gets, control of Fernplay on that PC and a view of its playlist, and nothing else on the PC. Pair on a network you trust; you can remove a paired phone in the PC's Settings at any time.
 
 ## Building
 
