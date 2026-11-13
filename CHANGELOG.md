@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Radio (first part): Home → Radio lists internet radio stations. Add them from an .m3u or .m3u8 file, the kind radio websites offer for download: with + in Radio, or with "Open with Fernplay" on the file in a file manager. Every http and https stream in the file becomes a station, named as the file names it (or after the file, or the server, when it gives no name); stations already in the list are skipped. Rename a station or delete it with Undo from its ⋮ menu. Playing stations comes next.
+- Stations live in their own list and never inside a playlist. The update keeps your playlists as they are.
+
 ## 0.3.0 (2026-11-08)
 
 Android 8.0 or later. Installs over 0.2.0 and keeps your playlists, folders and equalizer.

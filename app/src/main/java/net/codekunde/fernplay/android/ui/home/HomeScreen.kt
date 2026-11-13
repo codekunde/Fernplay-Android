@@ -64,9 +64,11 @@ fun HomeScreen(
     onSettings: () -> Unit,
     onChooseFolders: () -> Unit,
     onRemote: () -> Unit,
+    onRadio: () -> Unit,
 ) {
     val c = Fernplay.colors
     val settings by vm.settings.collectAsStateWithLifecycle()
+    val stations by vm.stations.stations.collectAsStateWithLifecycle()
     val songs by vm.librarySongs.collectAsStateWithLifecycle()
     val granted by vm.hasPermission.collectAsStateWithLifecycle()
     val playlists by vm.playlists.summaries.collectAsStateWithLifecycle()
@@ -135,6 +137,27 @@ fun HomeScreen(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Icon(painterResource(R.drawable.ic_music), contentDescription = null, tint = c.onAccentContainer)
+                            }
+                        },
+                    )
+                }
+                item(key = "radio") {
+                    val n = stations?.size
+                    NavRow(
+                        title = "Radio",
+                        subtitle = when (n) {
+                            null -> null
+                            0 -> "Add stations from a playlist file"
+                            1 -> "1 station"
+                            else -> "$n stations"
+                        },
+                        onClick = onRadio,
+                        leading = {
+                            Box(
+                                Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)).background(c.accentContainer),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(painterResource(R.drawable.ic_radio), contentDescription = null, tint = c.onAccentContainer)
                             }
                         },
                     )

@@ -1,5 +1,6 @@
 package net.codekunde.fernplay.android
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -26,6 +27,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         player = PlayerConnection(this)
+        // Not again after a rotation: the first creation already took the file.
+        if (savedInstanceState == null) takeStationFile(intent)
         setContent {
             val settings by vm.settings.collectAsStateWithLifecycle()
             val choice = settings?.theme ?: ThemeChoice.System
@@ -42,6 +45,18 @@ class MainActivity : ComponentActivity() {
                 FernplayApp(vm, player)
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        takeStationFile(intent)
+    }
+
+    /** An .m3u / .m3u8 opened with Fernplay from a file manager: its stations go into Radio. */
+    private fun takeStationFile(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_VIEW) return
+        val uri = intent.data ?: return
+        vm.importStations(uri, fromOtherApp = true)
     }
 
     override fun onStart() {

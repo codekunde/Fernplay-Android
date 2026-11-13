@@ -2,8 +2,17 @@ package net.codekunde.fernplay.android.ui
 
 import android.Manifest
 import android.app.Application
+import android.content.ContentResolver
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.OpenableColumns
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
+import kotlinx.coroutines.withContext
+import net.codekunde.fernplay.android.data.StationFiles
+import net.codekunde.fernplay.android.data.StationImport
+import net.codekunde.fernplay.android.data.StationStore
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -188,5 +197,66 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     /** Puts back the folders as they were before a change (Undo). */
     fun restoreFolders(choice: FolderChoice) {
         viewModelScope.launch { store.setFolders(choice) }
+    }
+
+    // Radio: stations added from .m3u / .m3u8 files.
+
+    val stations = StationStore(FernplayDatabase.get(app).stations(), viewModelScope)
+
+    private val _stationImport = MutableStateFlow<StationImport?>(null)
+    /** The last file's result, until the Radio screen has shown it. */
+    val stationImport: StateFlow<StationImport?> = _stationImport
+
+    fun stationImportShown() {
+        _stationImport.value = null
+    }
+
+    private val _openRadio = MutableStateFlow(false)
+    /** True after a file was opened with Fernplay from another app: the app shows Radio. */
+    val openRadio: StateFlow<Boolean> = _openRadio
+
+    fun radioOpened() {
+        _openRadio.value = false
+    }
+
+    /** Adds the stations in the file at [uri] (picked in Radio, or opened with Fernplay from another app). */
+    fun importStations(uri: Uri, fromOtherApp: Boolean) {
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            val name = withContext(Dispatchers.IO) { displayName(app, uri) }
+            val bytes = withContext(Dispatchers.IO) {
+                runCatching {
+                    app.contentResolver.openInputStream(uri)?.use { it.readNBytesCompat(StationFiles.MAX_BYTES + 1) }
+                }.getOrNull()
+            }
+            _stationImport.value = if (bytes == null) StationImport.Unreadable(name) else stations.import(name, bytes)
+            if (fromOtherApp) _openRadio.value = true
+        }
+    }
+
+    private companion object {
+        /** The file's name as the picker or the other app shows it; the last path part as a fallback. */
+        fun displayName(app: Application, uri: Uri): String {
+            if (uri.scheme == ContentResolver.SCHEME_CONTENT) {
+                runCatching {
+                    app.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                        if (c.moveToFirst() && !c.isNull(0)) return c.getString(0)
+                    }
+                }
+            }
+            return uri.lastPathSegment?.substringAfterLast('/') ?: "file"
+        }
+
+        /** Reads at most [limit] bytes (InputStream.readNBytes needs Android 13). */
+        fun InputStream.readNBytesCompat(limit: Int): ByteArray {
+            val out = ByteArrayOutputStream()
+            val buf = ByteArray(8192)
+            while (out.size() < limit) {
+                val n = read(buf, 0, minOf(buf.size, limit - out.size()))
+                if (n < 0) break
+                out.write(buf, 0, n)
+            }
+            return out.toByteArray()
+        }
     }
 }

@@ -30,6 +30,17 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- "Open with Fernplay" on an .m3u / .m3u8 in a file manager: its radio stations go into Radio. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="audio/x-mpegurl" />
+                <data android:mimeType="audio/mpegurl" />
+                <data android:mimeType="application/x-mpegurl" />
+                <data android:mimeType="application/vnd.apple.mpegurl" />
+            </intent-filter>
         </activity>
 
         <service

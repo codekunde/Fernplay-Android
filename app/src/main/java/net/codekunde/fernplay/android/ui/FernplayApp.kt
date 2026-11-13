@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import net.codekunde.fernplay.android.ui.radio.RadioScreen
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -47,6 +49,8 @@ object Routes {
     const val EQUALIZER = "equalizer"
     /** Fernplay on the PC: pairing and the phone remote. */
     const val REMOTE = "remote"
+    /** Internet radio stations. */
+    const val RADIO = "radio"
     const val PLAYLIST = "playlist/{id}"
     /** All songs opened from a playlist's "Add songs". */
     const val ADD_SONGS = "add-songs/{playlistId}"
@@ -71,6 +75,16 @@ fun FernplayApp(vm: LibraryViewModel, player: PlayerConnection, nav: NavHostCont
         val s = settings ?: return@Column // settings are read in a few milliseconds
         // Decided once: first launch starts with the folder question, later launches at Home.
         val start = remember { if (s.setupDone) Routes.HOME else Routes.FIRST_RUN }
+        // A station file opened with Fernplay from another app: show Radio with the result.
+        // Before the first-run folder step is done the stations are saved and Radio waits.
+        val openRadio by vm.openRadio.collectAsStateWithLifecycle()
+        LaunchedEffect(openRadio, s.setupDone) {
+            if (openRadio && s.setupDone) {
+                vm.radioOpened()
+                // Already on Radio: stay, or a new screen would replace it and drop its message.
+                if (nav.currentDestination?.route != Routes.RADIO) nav.navigate(Routes.RADIO) { launchSingleTop = true }
+            }
+        }
         NavHost(navController = nav, startDestination = start, modifier = Modifier.weight(1f)) {
             composable(Routes.FIRST_RUN) {
                 FirstRunScreen(vm, onDone = {
@@ -88,9 +102,11 @@ fun FernplayApp(vm: LibraryViewModel, player: PlayerConnection, nav: NavHostCont
                     onSettings = { nav.navigate(Routes.SETTINGS) },
                     onChooseFolders = { nav.navigate(Routes.FIRST_RUN) },
                     onRemote = { nav.navigate(Routes.REMOTE) { launchSingleTop = true } },
+                    onRadio = { nav.navigate(Routes.RADIO) { launchSingleTop = true } },
                 )
             }
             composable(Routes.REMOTE) { RemoteScreen(onBack = { nav.popBackStack() }) }
+            composable(Routes.RADIO) { RadioScreen(vm, onBack = { nav.popBackStack() }) }
             composable(Routes.ALL_SONGS) { AllSongsScreen(vm, player, onBack = { nav.popBackStack() }) }
             composable(Routes.PLAYLIST, arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 val id = e.arguments?.getLong("id") ?: return@composable
