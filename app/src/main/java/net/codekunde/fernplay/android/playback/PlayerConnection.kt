@@ -16,6 +16,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
+import net.codekunde.fernplay.android.data.StationEntity
 import net.codekunde.fernplay.android.library.Song
 
 /** What the player screens show about the loaded song and queue. */
@@ -30,7 +31,15 @@ data class NowPlaying(
     val queueName: String,
     val isPlaying: Boolean,
     val repeat: RepeatState,
+    /** A radio station: live, no length, no seeking. */
+    val isStation: Boolean = false,
+    /** The station's name while one plays, else "". */
+    val station: String = "",
+    val live: LiveStatus = LiveStatus.None,
 )
+
+/** A station's connection, for the LCD: LIVE, CONNECTING…, RECONNECTING…, UNREACHABLE. */
+enum class LiveStatus { None, Live, Connecting, Reconnecting, Unreachable }
 
 /** One song in the play queue, as the queue view lists it. */
 data class QueueItem(val mediaId: String, val title: String, val artist: String, val durationMs: Long)
@@ -111,6 +120,25 @@ class PlayerConnection(private val context: Context) {
         controller = null
     }
 
+    /** The item the [heard] flag belongs to. */
+    private var heardId: String? = null
+    /** True once the loaded station has made a sound: a later stall is a reconnect, not a first connect. */
+    private var heard = false
+
+    private fun liveStatus(c: MediaController, mediaId: String): LiveStatus {
+        if (mediaId != heardId) {
+            heardId = mediaId
+            heard = false
+        }
+        if (c.isPlaying) heard = true
+        return when {
+            c.playerError != null -> if (c.playWhenReady) LiveStatus.Reconnecting else LiveStatus.Unreachable
+            c.playWhenReady && c.playbackState == Player.STATE_BUFFERING ->
+                if (heard) LiveStatus.Reconnecting else LiveStatus.Connecting
+            else -> LiveStatus.Live
+        }
+    }
+
     @OptIn(UnstableApi::class) // MediaMetadata.durationMs
     private fun refresh() {
         val c = controller ?: return
@@ -124,7 +152,9 @@ class PlayerConnection(private val context: Context) {
             return
         }
         val m = item.mediaMetadata
-        val duration = c.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: m.durationMs ?: 0L
+        val isStation = RadioRules.isStation(item.mediaId)
+        val live = if (isStation) liveStatus(c, item.mediaId) else LiveStatus.None
+        val duration = if (isStation) 0L else c.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: m.durationMs ?: 0L
         _now.value = NowPlaying(
             mediaId = item.mediaId,
             title = m.title?.toString().orEmpty(),
@@ -133,8 +163,13 @@ class PlayerConnection(private val context: Context) {
             index = c.currentMediaItemIndex,
             count = c.mediaItemCount,
             queueName = c.playlistMetadata.title?.toString().orEmpty(),
-            isPlaying = c.isPlaying || (c.playWhenReady && c.playbackState == Player.STATE_BUFFERING),
+            // A station waiting to reconnect counts as playing, so Pause is there to stop it.
+            isPlaying = c.isPlaying || (c.playWhenReady && c.playbackState == Player.STATE_BUFFERING) ||
+                live == LiveStatus.Reconnecting,
             repeat = RepeatState.of(c.repeatMode),
+            isStation = isStation,
+            station = MediaItems.stationName(item),
+            live = live,
         )
     }
 
@@ -154,10 +189,32 @@ class PlayerConnection(private val context: Context) {
         }
     }
 
+    /**
+     * Plays the station at [index] with the whole Radio list as the queue, so
+     * Previous and Next step through the stations. The station already playing
+     * keeps playing; one that stopped (unreachable, paused) connects again.
+     */
+    fun playStations(stations: List<StationEntity>, index: Int) {
+        val station = stations.getOrNull(index) ?: return
+        withController { c ->
+            val id = RadioRules.mediaId(station.id)
+            if (c.currentMediaItem?.mediaId == id && c.playlistMetadata.title?.toString() == RADIO_QUEUE) {
+                if (c.playbackState == Player.STATE_IDLE) c.prepare()
+                c.play()
+                return@withController
+            }
+            QueueEdits.replace(c, stations.map(MediaItems::of), index, RADIO_QUEUE)
+            c.prepare()
+            c.play()
+        }
+    }
+
     /** Puts [songs] right after the current song; with nothing queued they become the queue. */
     fun playNext(songs: List<Song>, queueName: String) {
         if (songs.isEmpty()) return
         withController { c ->
+            // Songs never join the Radio list: they start their own queue.
+            if (c.playlistMetadata.title?.toString() == RADIO_QUEUE) return@withController play(songs, 0, queueName)
             if (!QueueEdits.playNext(c, songs.map(MediaItems::of))) play(songs, 0, queueName)
         }
     }
@@ -208,4 +265,9 @@ class PlayerConnection(private val context: Context) {
 
     /** Keeps "Playing from" right after the playing playlist is renamed. */
     fun renameQueue(from: String, to: String) = withController { c -> QueueEdits.renameQueue(c, from, to) }
+
+    companion object {
+        /** The queue name while stations play: "Playing from Radio". */
+        const val RADIO_QUEUE = "Radio"
+    }
 }

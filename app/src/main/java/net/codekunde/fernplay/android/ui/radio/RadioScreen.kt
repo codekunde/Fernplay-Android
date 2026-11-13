@@ -12,7 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
+import net.codekunde.fernplay.android.playback.PlayerConnection
+import net.codekunde.fernplay.android.playback.RadioRules
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -60,11 +65,13 @@ import net.codekunde.fernplay.android.ui.components.FernTopBar
 import net.codekunde.fernplay.android.ui.theme.Fernplay
 import java.net.URI
 
-/** Radio: the stations added from .m3u / .m3u8 files; add more, rename, delete with Undo. */
+/** Radio: the stations added from .m3u / .m3u8 files; tap one to play it; add more, rename, delete with Undo. */
 @Composable
-fun RadioScreen(vm: LibraryViewModel, onBack: () -> Unit) {
+fun RadioScreen(vm: LibraryViewModel, player: PlayerConnection, onBack: () -> Unit) {
     val store = vm.stations
     val stations by store.stations.collectAsStateWithLifecycle()
+    val now by player.now
+    val playingId = now?.takeIf { it.isStation }?.mediaId
     val imported by vm.stationImport.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
@@ -113,8 +120,14 @@ fun RadioScreen(vm: LibraryViewModel, onBack: () -> Unit) {
                 return@Column
             }
             LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
-                items(list, key = { it.id }) { s ->
-                    StationRow(s, onRename = { renaming = s }, onDelete = { delete(s) })
+                itemsIndexed(list, key = { _, s -> s.id }) { i, s ->
+                    StationRow(
+                        s,
+                        playing = playingId == RadioRules.mediaId(s.id),
+                        onPlay = { player.playStations(list, i) },
+                        onRename = { renaming = s },
+                        onDelete = { delete(s) },
+                    )
                 }
                 item(key = "add") { AddFromFileRow(addFromFile) }
             }
@@ -128,26 +141,40 @@ fun RadioScreen(vm: LibraryViewModel, onBack: () -> Unit) {
 }
 
 @Composable
-private fun StationRow(s: StationEntity, onRename: () -> Unit, onDelete: () -> Unit) {
+private fun StationRow(s: StationEntity, playing: Boolean, onPlay: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit) {
     val c = Fernplay.colors
     var menuOpen by remember { mutableStateOf(false) }
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        ArtTile(s.id, icon = R.drawable.ic_radio)
-        Column(Modifier.weight(1f)) {
-            Text(s.name, style = MaterialTheme.typography.bodyLarge, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(
-                address(s.url),
-                style = MaterialTheme.typography.bodyMedium,
-                color = c.textDim,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier
+                .weight(1f)
+                .heightIn(min = 64.dp)
+                .clickable(onClickLabel = "Play", onClick = onPlay)
+                .then(if (playing) Modifier.semantics { stateDescription = "Now playing" } else Modifier)
+                .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            ArtTile(s.id, icon = if (playing) R.drawable.ic_now_playing else R.drawable.ic_radio)
+            Column(Modifier.weight(1f)) {
+                Text(
+                    s.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (!playing) c.text else if (c.isDark) c.title else c.accent,
+                    fontWeight = if (playing) FontWeight.Medium else null,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    address(s.url) + if (playing) " · playing" else "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = c.textDim,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
-        Box {
+        Box(Modifier.padding(end = 4.dp)) {
             FernIconButton(R.drawable.ic_more, "More for ${s.name}", { menuOpen = true }, tint = c.textDim)
             FernMenu(expanded = menuOpen, onDismiss = { menuOpen = false }) {
                 FernMenuItem("Rename", R.drawable.ic_edit) { menuOpen = false; onRename() }

@@ -45,6 +45,14 @@ interface StationDao {
     @Query("UPDATE station SET name = :name, nameGuessed = 0 WHERE id = :id")
     suspend fun rename(id: Long, name: String)
 
+    /**
+     * The station's own name (its icy-name) in place of a guessed one; a name from
+     * the file or the user is kept. Returns 1 when it changed. Blocking: the
+     * playback service calls it off the main thread.
+     */
+    @Query("UPDATE station SET name = :name, nameGuessed = 0 WHERE id = :id AND nameGuessed = 1")
+    fun replaceGuessedName(id: Long, name: String): Int
+
     @Query("DELETE FROM station WHERE id = :id")
     suspend fun delete(id: Long)
 }

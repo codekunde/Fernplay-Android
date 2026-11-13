@@ -70,7 +70,7 @@ fun MiniPlayer(player: PlayerConnection, onOpen: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                ArtTile(n.mediaId.toLongOrNull() ?: 0L, size = 44.dp)
+                NowPlayingArt(n, 44.dp)
                 Column(Modifier.weight(1f)) {
                     Text(
                         n.title,
@@ -80,7 +80,8 @@ fun MiniPlayer(player: PlayerConnection, onOpen: () -> Unit) {
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        NowPlayingText.miniLine(n.artist, position, n.durationMs),
+                        if (n.isStation) NowPlayingText.miniStationLine(n.artist, n.station, n.live)
+                        else NowPlayingText.miniLine(n.artist, position, n.durationMs),
                         style = LcdText.small,
                         color = c.lcdSoft,
                         maxLines = 1,
@@ -124,7 +125,7 @@ fun ContinueCard(player: PlayerConnection) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        ArtTile(2L, size = 56.dp, icon = R.drawable.ic_queue)
+        if (n.isStation) NowPlayingArt(n, 56.dp) else ArtTile(2L, size = 56.dp, icon = R.drawable.ic_queue)
         Column(Modifier.weight(1f)) {
             Text(
                 "CONTINUE",
@@ -132,7 +133,7 @@ fun ContinueCard(player: PlayerConnection) {
                 color = c.textDim,
             )
             Text(
-                n.queueName.ifEmpty { n.title },
+                if (n.isStation) n.station else n.queueName.ifEmpty { n.title },
                 fontSize = 18.sp,
                 lineHeight = 24.sp,
                 fontWeight = FontWeight.Medium,
@@ -141,14 +142,15 @@ fun ContinueCard(player: PlayerConnection) {
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                NowPlayingText.continueLine(n.index, n.count, position),
+                if (n.isStation) NowPlayingText.continueStationLine(n.index, n.count)
+                else NowPlayingText.continueLine(n.index, n.count, position),
                 style = MaterialTheme.typography.bodyMedium,
                 color = c.textDim,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        val label = "Resume ${n.queueName.ifEmpty { n.title }}"
+        val label = if (n.isStation) "Play ${n.station}" else "Resume ${n.queueName.ifEmpty { n.title }}"
         Box(
             Modifier
                 .size(56.dp)

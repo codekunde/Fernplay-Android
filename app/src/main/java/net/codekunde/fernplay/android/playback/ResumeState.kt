@@ -27,9 +27,13 @@ data class ResumeState(val queue: ResumeQueue, val position: ResumePosition) {
             return if (found >= 0) found else i.coerceIn(0, items.lastIndex.coerceAtLeast(0))
         }
 
-    /** Start position: only kept when the saved song was found. */
+    /** Start position: only kept when the saved song was found. A station starts live, at 0. */
     val startPositionMs: Long
-        get() = if (queue.items.getOrNull(startIndex)?.id == position.mediaId) position.positionMs.coerceAtLeast(0) else 0L
+        get() = if (queue.items.getOrNull(startIndex)?.id == position.mediaId && !RadioRules.isStation(position.mediaId)) {
+            position.positionMs.coerceAtLeast(0)
+        } else {
+            0L
+        }
 }
 
 /**

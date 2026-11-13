@@ -106,7 +106,7 @@ fun FernplayApp(vm: LibraryViewModel, player: PlayerConnection, nav: NavHostCont
                 )
             }
             composable(Routes.REMOTE) { RemoteScreen(onBack = { nav.popBackStack() }) }
-            composable(Routes.RADIO) { RadioScreen(vm, onBack = { nav.popBackStack() }) }
+            composable(Routes.RADIO) { RadioScreen(vm, player, onBack = { nav.popBackStack() }) }
             composable(Routes.ALL_SONGS) { AllSongsScreen(vm, player, onBack = { nav.popBackStack() }) }
             composable(Routes.PLAYLIST, arguments = listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 val id = e.arguments?.getLong("id") ?: return@composable
@@ -150,5 +150,5 @@ fun FernplayApp(vm: LibraryViewModel, player: PlayerConnection, nav: NavHostCont
 }
 
 /** Screens that show the mini player when something is queued. */
-private val MINI_PLAYER_ROUTES = setOf(Routes.HOME, Routes.ALL_SONGS, Routes.PLAYLIST)
+private val MINI_PLAYER_ROUTES = setOf(Routes.HOME, Routes.ALL_SONGS, Routes.PLAYLIST, Routes.RADIO)
 

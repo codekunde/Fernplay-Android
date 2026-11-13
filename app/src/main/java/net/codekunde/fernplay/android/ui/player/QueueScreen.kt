@@ -34,6 +34,7 @@ import net.codekunde.fernplay.android.R
 import net.codekunde.fernplay.android.library.SongList
 import net.codekunde.fernplay.android.playback.NowPlayingText
 import net.codekunde.fernplay.android.playback.PlayerConnection
+import net.codekunde.fernplay.android.playback.RadioRules
 import net.codekunde.fernplay.android.playback.QueueItem
 import net.codekunde.fernplay.android.ui.components.ArtTile
 import net.codekunde.fernplay.android.ui.components.EmptyState
@@ -132,7 +133,14 @@ private fun QueueRow(item: QueueItem, playing: Boolean, onPlay: () -> Unit, onRe
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            ArtTile(item.mediaId.toLongOrNull() ?: 0L, icon = if (playing) R.drawable.ic_now_playing else R.drawable.ic_fern_line)
+            ArtTile(
+                RadioRules.stationId(item.mediaId) ?: item.mediaId.toLongOrNull() ?: 0L,
+                icon = when {
+                    playing -> R.drawable.ic_now_playing
+                    RadioRules.isStation(item.mediaId) -> R.drawable.ic_radio
+                    else -> R.drawable.ic_fern_line
+                },
+            )
             Column(Modifier.weight(1f)) {
                 Text(
                     item.title,
@@ -143,7 +151,8 @@ private fun QueueRow(item: QueueItem, playing: Boolean, onPlay: () -> Unit, onRe
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    "${item.artist} · ${SongList.duration(item.durationMs)}" + if (playing) " · playing" else "",
+                    (if (RadioRules.isStation(item.mediaId)) item.artist.ifEmpty { "Station" } + " · live" else "${item.artist} · ${SongList.duration(item.durationMs)}") +
+                        if (playing) " · playing" else "",
                     style = MaterialTheme.typography.bodyMedium,
                     color = c.textDim,
                     maxLines = 1,

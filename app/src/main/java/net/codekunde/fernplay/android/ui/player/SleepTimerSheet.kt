@@ -36,10 +36,11 @@ import net.codekunde.fernplay.android.ui.theme.Fernplay
 /**
  * Sets the sleep timer. Off: the four times and End of this song. Running:
  * the time left, +15 minutes and Turn off. Every choice closes the sheet.
+ * A station never ends, so it gets no End of this song.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SleepTimerSheet(timer: SleepTimer, onDismiss: () -> Unit) {
+fun SleepTimerSheet(timer: SleepTimer, onDismiss: () -> Unit, live: Boolean = false) {
     val c = Fernplay.colors
     val state by timer.state.collectAsStateWithLifecycle()
     val remaining by timer.remaining.collectAsStateWithLifecycle()
@@ -74,11 +75,11 @@ fun SleepTimerSheet(timer: SleepTimer, onDismiss: () -> Unit) {
                     SleepRules.MINUTES.forEach { m ->
                         SheetRow(R.drawable.ic_moon, SleepRules.choiceLabel(m)) { pick { timer.start(m) } }
                     }
-                    SheetRow(R.drawable.ic_music, "End of this song") { pick(timer::endOfSong) }
+                    if (!live) SheetRow(R.drawable.ic_music, "End of this song") { pick(timer::endOfSong) }
                 }
                 is SleepState.At -> {
                     SheetRow(R.drawable.ic_add, "${SleepRules.EXTEND_MINUTES} more minutes") { pick(timer::extend) }
-                    SheetRow(R.drawable.ic_music, "End of this song instead") { pick(timer::endOfSong) }
+                    if (!live) SheetRow(R.drawable.ic_music, "End of this song instead") { pick(timer::endOfSong) }
                     SheetRow(R.drawable.ic_close, "Turn off", tint = c.amber) { pick(timer::cancel) }
                 }
                 SleepState.EndOfSong -> {

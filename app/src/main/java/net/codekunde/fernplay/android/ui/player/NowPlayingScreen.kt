@@ -32,9 +32,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import net.codekunde.fernplay.android.R
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import net.codekunde.fernplay.android.playback.LiveStatus
 import net.codekunde.fernplay.android.playback.NowPlaying
 import net.codekunde.fernplay.android.playback.NowPlayingText
 import net.codekunde.fernplay.android.playback.PlayerConnection
+import net.codekunde.fernplay.android.playback.RadioRules
 import net.codekunde.fernplay.android.ui.components.ArtTile
 import net.codekunde.fernplay.android.ui.components.EmptyState
 import net.codekunde.fernplay.android.ui.components.FernIconButton
@@ -63,7 +67,7 @@ fun NowPlayingScreen(player: PlayerConnection, onClose: () -> Unit, onGym: () ->
     var sleepSheet by remember { mutableStateOf(false) }
     val n = now ?: return NothingPlaying(onClose)
 
-    if (sleepSheet) SleepTimerSheet(SleepTimer.shared, onDismiss = { sleepSheet = false })
+    if (sleepSheet) SleepTimerSheet(SleepTimer.shared, onDismiss = { sleepSheet = false }, live = n.isStation)
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // The art gives way on short screens; everything below it keeps its size.
@@ -93,18 +97,23 @@ fun NowPlayingScreen(player: PlayerConnection, onClose: () -> Unit, onGym: () ->
             }
 
             Box(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), contentAlignment = Alignment.Center) {
-                ArtTile(n.mediaId.toLongOrNull() ?: 0L, size = art)
+                NowPlayingArt(n, art)
             }
 
             NowPlayingLcd(n, scrub ?: position, Modifier.padding(horizontal = 16.dp).fillMaxWidth())
 
-            SeekBar(
-                positionMs = position,
-                durationMs = n.durationMs,
-                onSeek = player::seekTo,
-                onScrub = { scrub = it },
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp),
-            )
+            // A station cannot seek: the bar's place stays, so the buttons do not jump.
+            if (n.isStation) {
+                Spacer(Modifier.padding(top = 4.dp).height(48.dp))
+            } else {
+                SeekBar(
+                    positionMs = position,
+                    durationMs = n.durationMs,
+                    onSeek = player::seekTo,
+                    onScrub = { scrub = it },
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp),
+                )
+            }
 
             Row(
                 Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 14.dp),
@@ -125,7 +134,8 @@ fun NowPlayingScreen(player: PlayerConnection, onClose: () -> Unit, onGym: () ->
 
             // XFADE (v2) joins this row later.
             Row(Modifier.padding(horizontal = 16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                RepeatToggle(n.repeat, player::cycleRepeat, Modifier.weight(1f))
+                // Repeat means nothing for a live station.
+                if (n.isStation) Spacer(Modifier.weight(1f)) else RepeatToggle(n.repeat, player::cycleRepeat, Modifier.weight(1f))
                 LabelButton(R.drawable.ic_queue, "Queue", onQueue, Modifier.width(88.dp))
                 LabelButton(R.drawable.ic_eq, "EQ", onEqualizer, Modifier.width(88.dp))
             }
@@ -141,7 +151,8 @@ private fun NowPlayingLcd(n: NowPlaying, positionMs: Long, modifier: Modifier) {
         Text(n.title, style = LcdText.title.copy(shadow = LcdGlow), color = c.lcd, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "${n.artist.uppercase()} · ${NowPlayingText.trackOf(n.index, n.count)}",
+                if (n.isStation) NowPlayingText.stationLine(n.artist, n.station)
+                else "${n.artist.uppercase()} · ${NowPlayingText.trackOf(n.index, n.count)}",
                 style = LcdText.small.copy(fontSize = 15.sp, lineHeight = 20.sp),
                 color = c.lcdSoft,
                 maxLines = 1,
@@ -150,8 +161,16 @@ private fun NowPlayingLcd(n: NowPlaying, positionMs: Long, modifier: Modifier) {
             )
             SleepBadge(SleepTimer.shared)
         }
-        LcdClock(positionMs, n.durationMs, big = false, modifier = Modifier.padding(top = 6.dp))
+        LcdClock(positionMs, n, big = false, modifier = Modifier.padding(top = 6.dp))
     }
+}
+
+/** The song's tile, or a radio tile for a station. */
+@Composable
+internal fun NowPlayingArt(n: NowPlaying, size: androidx.compose.ui.unit.Dp) {
+    val stationId = RadioRules.stationId(n.mediaId)
+    if (stationId != null) ArtTile(stationId, size = size, icon = R.drawable.ic_radio)
+    else ArtTile(n.mediaId.toLongOrNull() ?: 0L, size = size)
 }
 
 /** A moon and the time left (or END) while the sleep timer runs; nothing when it is off. */
@@ -175,10 +194,11 @@ private fun SleepBadge(timer: SleepTimer) {
     }
 }
 
-/** Elapsed (big, left) and time left (small, right) on one baseline. */
+/** Elapsed (big, left) and time left (small, right) on one baseline; a station shows LIVE or its connection on the right. */
 @Composable
-private fun LcdClock(positionMs: Long, durationMs: Long, big: Boolean, modifier: Modifier = Modifier) {
+private fun LcdClock(positionMs: Long, n: NowPlaying, big: Boolean, modifier: Modifier = Modifier) {
     val c = Fernplay.colors
+    val durationMs = n.durationMs
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
         Text(
             NowPlayingText.elapsed(positionMs),
@@ -187,10 +207,17 @@ private fun LcdClock(positionMs: Long, durationMs: Long, big: Boolean, modifier:
             modifier = Modifier.weight(1f).alignByBaseline(),
         )
         Text(
-            NowPlayingText.remaining(positionMs, durationMs),
+            if (n.isStation) NowPlayingText.liveLabel(n.live) else NowPlayingText.remaining(positionMs, durationMs),
             style = LcdText.small.copy(fontSize = if (big) 24.sp else 18.sp, lineHeight = if (big) 28.sp else 22.sp),
-            color = c.lcdSoft,
-            modifier = Modifier.alignByBaseline(),
+            color = if (n.live == LiveStatus.Unreachable) c.amber else c.lcdSoft,
+            modifier = Modifier
+                .alignByBaseline()
+                .then(
+                    if (n.isStation) Modifier.semantics {
+                        contentDescription = NowPlayingText.liveDescription(n.live)
+                        liveRegion = LiveRegionMode.Polite
+                    } else Modifier
+                ),
         )
     }
 }
@@ -238,35 +265,39 @@ fun GymScreen(player: PlayerConnection, onClose: () -> Unit, onQueue: () -> Unit
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                n.artist.uppercase(),
+                if (n.isStation) NowPlayingText.stationLine(n.artist, n.station) else n.artist.uppercase(),
                 style = LcdText.small.copy(fontSize = 19.sp, lineHeight = 24.sp),
                 color = c.lcdSoft,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            LcdClock(shown, n.durationMs, big = true, modifier = Modifier.padding(top = 8.dp))
+            LcdClock(shown, n, big = true, modifier = Modifier.padding(top = 8.dp))
         }
 
-        SeekBar(
-            positionMs = position,
-            durationMs = n.durationMs,
-            onSeek = player::seekTo,
-            onScrub = { scrub = it },
-            big = true,
-            modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp),
-        )
+        if (!n.isStation) {
+            SeekBar(
+                positionMs = position,
+                durationMs = n.durationMs,
+                onSeek = player::seekTo,
+                onScrub = { scrub = it },
+                big = true,
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp),
+            )
+        }
 
         Spacer(Modifier.weight(1f))
 
-        RepeatToggle(
-            n.repeat,
-            player::cycleRepeat,
-            Modifier.padding(horizontal = 12.dp).fillMaxWidth(),
-            height = 88.dp,
-            radius = 26.dp,
-            fontSize = 16.sp,
-            iconSize = 32.dp,
-        )
+        if (!n.isStation) {
+            RepeatToggle(
+                n.repeat,
+                player::cycleRepeat,
+                Modifier.padding(horizontal = 12.dp).fillMaxWidth(),
+                height = 88.dp,
+                radius = 26.dp,
+                fontSize = 16.sp,
+                iconSize = 32.dp,
+            )
+        }
 
         Row(
             Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 14.dp),
