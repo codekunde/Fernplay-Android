@@ -1,21 +1,24 @@
 # <img src="docs/fernplay-android.svg" width="32" height="32" alt=""> Fernplay for Android
 
-A simple music player for Android: open it, pick a track or a playlist, play.
+A simple music player for Android: open it, pick a track, a playlist or a radio station, play.
 
 <p>
   <img src="docs/screenshots/home.png" width="160" alt="Home in the light theme: All songs, Fernplay on your PC, and three playlists with a play button each">
   <img src="docs/screenshots/now-playing.png" width="160" alt="Now Playing in the dark theme: a green LCD with title, artist and time, seek bar, transport buttons, Repeat List, Queue and EQ">
+  <img src="docs/screenshots/radio.png" width="160" alt="A radio station playing in the dark theme: the green LCD shows the live song, its artist and the station, the time since it started and LIVE">
 </p>
 
 Fernplay plays the music already on your phone. You pick your music folders once and new songs appear by themselves. Playlists live inside the app, all on the home screen, never as files in folders. Repeat is always one tap away, on the player and in the notification, and the lock screen, headset, Bluetooth and car buttons all control playback.
 
 The EQ is the one from Fernplay for Windows: ten bands from 60 Hz to 16 kHz, a preamp, the same built-in presets and your own, and a curve that shows what you hear. It sounds the same on every phone because Fernplay does the filtering itself instead of relying on the phone maker's equalizer.
 
+It plays internet radio too. Add stations from the `.m3u` or `.m3u8` files radio websites offer for download (+ in Radio, or "Open with Fernplay" on the file); Fernplay shows the song each station is playing, on Now Playing, the lock screen, Bluetooth and car displays, and connects again by itself when the connection drops. Plain http stations work. A station moves from mobile data to Wi-Fi when the phone joins Wi-Fi, and keeps playing with the screen off. On mobile data a station uses about 1 MB a minute at 128 kbit/s, some 60 MB an hour. The stations you play are the only thing Fernplay fetches from the internet; the PC remote below stays on your home network.
+
 It can also be the remote for Fernplay on your PC: pair once with a 6-digit code, then play, pause, skip, seek, set the volume, Shuffle, Repeat and Crossfade, and pick a track from the PC's playlist. Home network only, encrypted, and only with the PC you paired.
 
 It is the Android sibling of [Fernplay](https://github.com/codekunde/Fernplay) for Windows and shares its look: a dark frame, a green LCD-style display and a fern.
 
-**Status:** 0.3.0 adds the remote for Fernplay on your PC. Download `fernplay-0.3.0.apk` from the Releases page and open it on your phone (Android asks once to allow installs from that app); it installs over 0.2.0 and keeps your playlists.
+**Status:** 0.4.0 adds internet radio. Download `fernplay-0.4.0.apk` from the Releases page and open it on your phone (Android asks once to allow installs from that app); it installs over 0.3.0 and keeps your playlists.
 
 ## Requirements
 

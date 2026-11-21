@@ -1,12 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 (2026-11-21)
 
-- Radio (first part): Home → Radio lists internet radio stations. Add them from an .m3u or .m3u8 file, the kind radio websites offer for download: with + in Radio, or with "Open with Fernplay" on the file in a file manager. Every http and https stream in the file becomes a station, named as the file names it (or after the file, or the server, when it gives no name); stations already in the list are skipped. Rename a station or delete it with Undo from its ⋮ menu.
-- Radio (second part): tap a station to play it. Now Playing shows the song the station is playing, split into title and artist, with the station's name under it; LIVE takes the place of the time left, and there is no seek bar or Repeat. Previous and Next step through your stations. The notification, lock screen, Bluetooth and car displays show the song too, with the station as the album. A station added without a name takes the name it sends.
+Android 8.0 or later. Installs over 0.3.0 and keeps your playlists, folders and equalizer.
+
+- Internet radio: Home → Radio lists your radio stations. Add them from an .m3u or .m3u8 file, the kind radio websites offer for download: with + in Radio, or with "Open with Fernplay" on the file in a file manager. Every http and https stream in the file becomes a station, named as the file names it (or after the file, or the server, when it gives no name); stations already in the list are skipped. Rename a station or delete it with Undo from its ⋮ menu.
+- Tap a station to play it. Now Playing shows the song the station is playing, split into title and artist, with the station's name under it; LIVE takes the place of the time left, and there is no seek bar or Repeat. Previous and Next step through your stations. The notification, lock screen, Bluetooth and car displays show the song too, with the station as the album. A station added without a name takes the name it sends.
 - When the connection drops, the display says RECONNECTING… and Fernplay connects again by itself, up to 3 times a minute; after that it stops and says UNREACHABLE, and Play tries again. A station is never skipped. A station playing over mobile data moves to Wi-Fi when the phone joins Wi-Fi again (a gap of a second or two), and it keeps playing with the screen off.
 - Plain http stations work (many public stations offer only http). Fernplay now asks Android to keep Wi-Fi awake while a station plays.
 - Stations live in their own list and never inside a playlist. The update keeps your playlists as they are.
+- A station uses mobile data when the phone is not on Wi-Fi: about 1 MB a minute at 128 kbit/s, some 60 MB an hour.
 
 ## 0.3.0 (2026-11-08)
 
