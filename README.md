@@ -3,7 +3,7 @@
 A simple music player for Android: open it, pick a track, a playlist or a radio station, play.
 
 <p>
-  <img src="docs/screenshots/home.png" width="160" alt="Home in the light theme: All songs, Fernplay on your PC, and three playlists with a play button each">
+  <img src="docs/screenshots/home.png" width="160" alt="Home in the light theme: a Continue card for a radio station, All songs, Radio, Fernplay on your PC, and three playlists with a play button each">
   <img src="docs/screenshots/now-playing.png" width="160" alt="Now Playing in the dark theme: a green LCD with title, artist and time, seek bar, transport buttons, Repeat List, Queue and EQ">
   <img src="docs/screenshots/radio.png" width="160" alt="A radio station playing in the dark theme: the green LCD shows the live song, its artist and the station, the time since it started and LIVE">
 </p>
